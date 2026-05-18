@@ -6,27 +6,35 @@ import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
-  uids: ['email'],
-  passwordColumnName: 'password',
+  uids: ['username'],
+  passwordColumnName: 'passwordHash',
 })
 
 export default class User extends compose(BaseModel, AuthFinder) {
-  @column({ isPrimary: true })
-  declare id: number
+  static table = 't_user'
+
+  @column({ isPrimary: true, columnName: 'user_id' })
+  declare userId: number
 
   @column()
-  declare fullName: string | null
+  declare username: string
+
+  @column({ serializeAs: null, columnName: 'password_hash' })
+  declare passwordHash: string
 
   @column()
-  declare email: string
+  declare name: string
 
-  @column({ serializeAs: null })
-  declare password: string
+  @column()
+  declare role: 'parent' | 'child'
 
-  @column.dateTime({ autoCreate: true })
+  @column({ columnName: 'current_family_fk' })
+  declare currentFamilyFk: number
+
+  @column.dateTime({ autoCreate: true, columnName: 'created_at' })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ autoCreate: true, autoUpdate: true, columnName: 'updated_at' })
   declare updatedAt: DateTime | null
 
   static accessTokens = DbAccessTokensProvider.forModel(User)
