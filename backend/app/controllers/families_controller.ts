@@ -213,4 +213,80 @@ export default class FamiliesController {
       message: 'Membre retiré de la famille avec succès.',
     })
   }
+
+  /**
+   * Permet à un parent de quitter une famille rejointe.
+   *
+   * Règles :
+   * - seul un parent peut quitter une famille ;
+   * - un parent ne peut pas quitter sa propre famille personnelle ;
+   * - le parent est rattaché à sa famille personnelle ;
+   * - sa famille personnelle est réactivée ;
+   * - ses accès aux tâches de l'ancienne famille sont supprimés ;
+   * - il ne se retrouve jamais sans famille courante.
+   */
+  async leave({ auth, response }: HttpContext) {
+    const parent = auth.getUserOrFail()
+
+    if (parent.role !== 'parent') {
+      return response.forbidden({
+        message: 'Seul un parent peut quitter une famille.',
+      })
+    }
+
+    const currentFamily = await Family.find(parent.currentFamilyFk)
+
+    if (!currentFamily || currentFamily.status !== 'active') {
+      return response.conflict({
+        message: 'Famille courante introuvable ou inactive.',
+      })
+    }
+
+    if (currentFamily.ownerUserId === parent.userId) {
+      return response.conflict({
+        message: 'Vous ne pouvez pas quitter votre propre famille personnelle.',
+      })
+    }
+
+    await db.transaction(async (trx) => {
+      let personalFamily = await Family.query({ client: trx })
+        .where('owner_user_id', parent.userId)
+        .first()
+
+      if (!personalFamily) {
+        personalFamily = new Family()
+        personalFamily.ownerUserId = parent.userId
+        personalFamily.name = `Famille ${parent.name}`
+      }
+
+      personalFamily.status = 'active'
+      personalFamily.useTransaction(trx)
+      await personalFamily.save()
+
+      const taskRows = await trx
+        .query()
+        .from('t_task')
+        .select('task_id')
+        .where('family_fk', currentFamily.familyId)
+
+      const taskIds = taskRows.map((taskRow) => taskRow.task_id)
+
+      if (taskIds.length > 0) {
+        await trx
+          .query()
+          .from('t_task_access')
+          .where('parent_fk', parent.userId)
+          .whereIn('task_fk', taskIds)
+          .delete()
+      }
+
+      parent.currentFamilyFk = personalFamily.familyId
+      parent.useTransaction(trx)
+      await parent.save()
+    })
+
+    return response.ok({
+      message: 'Vous avez quitté la famille avec succès.',
+    })
+  }
 }

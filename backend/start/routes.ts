@@ -32,6 +32,7 @@ router
 
     router.get('/family', [FamilyController, 'show'])
     router.post('/family/children', [FamilyController, 'createChild'])
+    router.post('/family/leave', [FamilyController, 'leave'])
     router.delete('/family/members/:id', [FamilyController, 'removeMember'])
 
     router.get('/tasks', [TasksController, 'index'])
