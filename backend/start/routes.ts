@@ -12,6 +12,7 @@ import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
 const FamilyController = () => import('#controllers/families_controller')
+const TasksController = () => import('#controllers/tasks_controller')
 
 router.get('/', async () => {
   return {
@@ -29,5 +30,8 @@ router
 
     router.get('/family', [FamilyController, 'show'])
     router.post('/family/children', [FamilyController, 'createChild'])
+
+    router.get('/tasks', [TasksController, 'index'])
+    router.post('/tasks', [TasksController, 'store'])
   })
   .use(middleware.auth({ guards: ['api'] }))
