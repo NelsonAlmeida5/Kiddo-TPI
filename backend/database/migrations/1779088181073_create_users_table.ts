@@ -54,7 +54,9 @@ export default class extends BaseSchema {
      * des tables, tout en gardant une vraie contrainte de clé étrangère.
      */
     this.schema.alterTable('t_family', (table) => {
-      table.unique(['owner_user_id'], 'uq_family_owner')
+      table.unique(['owner_user_id'], {
+        indexName: 'uq_family_owner',
+      })
 
       table.foreign('owner_user_id', 'fk_family_owner').references('user_id').inTable('t_user')
     })
