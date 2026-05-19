@@ -14,6 +14,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const FamilyController = () => import('#controllers/families_controller')
 const TasksController = () => import('#controllers/tasks_controller')
 const ProofsController = () => import('#controllers/proofs_controller')
+const InvitationsController = () => import('#controllers/invitations_controller')
 
 router.get('/', async () => {
   return {
@@ -40,5 +41,10 @@ router
     router.get('/tasks/:id/proofs', [ProofsController, 'indexForTask'])
     router.post('/tasks/:id/proofs', [ProofsController, 'submit'])
     router.post('/proofs/:id/decision', [ProofsController, 'decide'])
+
+    router.get('/invitations', [InvitationsController, 'index'])
+    router.post('/invitations', [InvitationsController, 'store'])
+    router.post('/invitations/:id/respond', [InvitationsController, 'respond'])
+    router.post('/invitations/:id/cancel', [InvitationsController, 'cancel'])
   })
   .use(middleware.auth({ guards: ['api'] }))
