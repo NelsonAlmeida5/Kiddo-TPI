@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
 import Task from '#models/task'
 import User from '#models/user'
-import { createTaskValidator } from '#validators/task'
+import { createTaskValidator, updateTaskValidator } from '#validators/task'
 
 export default class TasksController {
   private serializeTask(task: Task) {
@@ -21,6 +21,27 @@ export default class TasksController {
       updatedAt: task.updatedAt?.toISO(),
       deletedAt: task.deletedAt?.toISO(),
     }
+  }
+
+  private async hasWriteAccess(parentId: number, taskId: number) {
+    const access = await db
+      .from('t_task_access')
+      .where('parent_fk', parentId)
+      .where('task_fk', taskId)
+      .where('access_level', 'write')
+      .first()
+
+    return Boolean(access)
+  }
+
+  private async findChildInSameFamily(childId: number, familyId: number) {
+    const child = await User.find(childId)
+
+    if (!child || child.role !== 'child' || child.currentFamilyFk !== familyId) {
+      return null
+    }
+
+    return child
   }
 
   /**
@@ -76,13 +97,6 @@ export default class TasksController {
 
   /**
    * Crée une tâche pour un enfant.
-   *
-   * Règles appliquées :
-   * - seul un parent peut créer une tâche ;
-   * - l'enfant assigné doit appartenir à la même famille ;
-   * - la tâche est créée avec le statut todo ;
-   * - le parent créateur reçoit automatiquement un accès write ;
-   * - les autres parents de la famille reçoivent le niveau d'accès choisi.
    */
   async store({ auth, request, response }: HttpContext) {
     const parent = auth.getUserOrFail()
@@ -103,9 +117,9 @@ export default class TasksController {
       })
     }
 
-    const child = await User.find(payload.assignedChildFk)
+    const child = await this.findChildInSameFamily(payload.assignedChildFk, parent.currentFamilyFk)
 
-    if (!child || child.role !== 'child' || child.currentFamilyFk !== parent.currentFamilyFk) {
+    if (!child) {
       return response.forbidden({
         message: 'L’enfant assigné doit appartenir à votre famille.',
       })
@@ -159,6 +173,169 @@ export default class TasksController {
     return response.created({
       message: 'Tâche créée avec succès.',
       task: this.serializeTask(task),
+    })
+  }
+
+  /**
+   * Modifie une tâche non terminée.
+   *
+   * La modification est refusée si :
+   * - l'utilisateur n'est pas parent ;
+   * - le parent n'a pas l'accès write ;
+   * - la tâche est déjà soumise ou validée.
+   */
+  async update({ auth, request, response }: HttpContext) {
+    const parent = auth.getUserOrFail()
+
+    if (parent.role !== 'parent') {
+      return response.forbidden({
+        message: 'Seul un parent peut modifier une tâche.',
+      })
+    }
+
+    const taskId = Number(request.param('id'))
+
+    if (!Number.isInteger(taskId)) {
+      return response.status(400).send({
+        message: 'Identifiant de tâche invalide.',
+      })
+    }
+
+    const task = await Task.find(taskId)
+
+    if (!task || task.deletedAt) {
+      return response.notFound({
+        message: 'Tâche introuvable.',
+      })
+    }
+
+    if (task.familyFk !== parent.currentFamilyFk) {
+      return response.forbidden({
+        message: 'Cette tâche n’appartient pas à votre famille.',
+      })
+    }
+
+    const canWrite = await this.hasWriteAccess(parent.userId, task.taskId)
+
+    if (!canWrite) {
+      return response.forbidden({
+        message: 'Vous n’avez pas le droit de modifier cette tâche.',
+      })
+    }
+
+    if (task.status === 'submitted' || task.status === 'validated') {
+      return response.conflict({
+        message: 'Une tâche soumise ou validée ne peut pas être modifiée.',
+      })
+    }
+
+    const payload = await request.validateUsing(updateTaskValidator)
+
+    if (payload.dueDate) {
+      const dueDate = DateTime.fromISO(payload.dueDate)
+
+      if (!dueDate.isValid) {
+        return response.status(422).send({
+          message: 'La date d’échéance est invalide.',
+        })
+      }
+
+      task.dueDate = dueDate
+    }
+
+    if (payload.assignedChildFk) {
+      const child = await this.findChildInSameFamily(
+        payload.assignedChildFk,
+        parent.currentFamilyFk
+      )
+
+      if (!child) {
+        return response.forbidden({
+          message: 'L’enfant assigné doit appartenir à votre famille.',
+        })
+      }
+
+      task.assignedChildFk = child.userId
+    }
+
+    if (payload.title !== undefined) {
+      task.title = payload.title
+    }
+
+    if (payload.description !== undefined) {
+      task.description = payload.description
+    }
+
+    task.version += 1
+    await task.save()
+
+    if (payload.accessLevelForOtherParents) {
+      await db
+        .from('t_task_access')
+        .where('task_fk', task.taskId)
+        .whereNot('parent_fk', parent.userId)
+        .update({
+          access_level: payload.accessLevelForOtherParents,
+          updated_at: new Date(),
+        })
+    }
+
+    return response.ok({
+      message: 'Tâche modifiée avec succès.',
+      task: this.serializeTask(task),
+    })
+  }
+
+  /**
+   * Supprime logiquement une tâche.
+   *
+   * La tâche reste en base pour conserver l'historique.
+   */
+  async destroy({ auth, request, response }: HttpContext) {
+    const parent = auth.getUserOrFail()
+
+    if (parent.role !== 'parent') {
+      return response.forbidden({
+        message: 'Seul un parent peut supprimer une tâche.',
+      })
+    }
+
+    const taskId = Number(request.param('id'))
+
+    if (!Number.isInteger(taskId)) {
+      return response.status(400).send({
+        message: 'Identifiant de tâche invalide.',
+      })
+    }
+
+    const task = await Task.find(taskId)
+
+    if (!task || task.deletedAt) {
+      return response.notFound({
+        message: 'Tâche introuvable.',
+      })
+    }
+
+    if (task.familyFk !== parent.currentFamilyFk) {
+      return response.forbidden({
+        message: 'Cette tâche n’appartient pas à votre famille.',
+      })
+    }
+
+    const canWrite = await this.hasWriteAccess(parent.userId, task.taskId)
+
+    if (!canWrite) {
+      return response.forbidden({
+        message: 'Vous n’avez pas le droit de supprimer cette tâche.',
+      })
+    }
+
+    task.deletedAt = DateTime.now()
+    task.version += 1
+    await task.save()
+
+    return response.ok({
+      message: 'Tâche supprimée avec succès.',
     })
   }
 }

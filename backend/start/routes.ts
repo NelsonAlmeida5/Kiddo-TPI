@@ -33,5 +33,7 @@ router
 
     router.get('/tasks', [TasksController, 'index'])
     router.post('/tasks', [TasksController, 'store'])
+    router.put('/tasks/:id', [TasksController, 'update'])
+    router.delete('/tasks/:id', [TasksController, 'destroy'])
   })
   .use(middleware.auth({ guards: ['api'] }))
