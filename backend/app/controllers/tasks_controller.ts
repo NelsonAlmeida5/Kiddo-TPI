@@ -62,6 +62,7 @@ export default class TasksController {
     if (user.role === 'child') {
       const tasks = await Task.query()
         .where('assigned_child_fk', user.userId)
+        .where('family_fk', user.currentFamilyFk)
         .whereNull('deleted_at')
         .orderBy(sortColumn, 'asc')
 
