@@ -13,6 +13,7 @@ import { middleware } from '#start/kernel'
 const AuthController = () => import('#controllers/auth_controller')
 const FamilyController = () => import('#controllers/families_controller')
 const TasksController = () => import('#controllers/tasks_controller')
+const ProofsController = () => import('#controllers/proofs_controller')
 
 router.get('/', async () => {
   return {
@@ -35,5 +36,9 @@ router
     router.post('/tasks', [TasksController, 'store'])
     router.put('/tasks/:id', [TasksController, 'update'])
     router.delete('/tasks/:id', [TasksController, 'destroy'])
+
+    router.get('/tasks/:id/proofs', [ProofsController, 'indexForTask'])
+    router.post('/tasks/:id/proofs', [ProofsController, 'submit'])
+    router.post('/proofs/:id/decision', [ProofsController, 'decide'])
   })
   .use(middleware.auth({ guards: ['api'] }))
