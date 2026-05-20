@@ -157,6 +157,7 @@ export default class FamiliesController {
         .where('family_fk', currentFamily.familyId)
         .where('assigned_child_fk', member.userId)
         .whereNull('deleted_at')
+        .whereIn('status', ['todo', 'submitted', 'refused'])
         .count('* as total')
         .first()
 
@@ -165,7 +166,7 @@ export default class FamiliesController {
       if (activeTasksCount > 0) {
         return response.conflict({
           message:
-            'Cet enfant possède encore des tâches dans la famille. Elles doivent être supprimées ou traitées avant de le retirer.',
+            'Cet enfant possède encore des tâches non terminées dans la famille. Elles doivent être validées ou supprimées avant de le retirer.',
         })
       }
     }
