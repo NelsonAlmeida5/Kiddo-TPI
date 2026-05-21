@@ -248,7 +248,7 @@ INSERT INTO t_task (
     2,
     1
   ),
-  (
+   (
     5,
     'Ranger le bureau',
     'Ranger le bureau avant le week-end.',
@@ -260,6 +260,34 @@ INSERT INTO t_task (
     NULL,
     4,
     2,
+    1
+  ),
+  (
+    6,
+    'Faire le lit',
+    'Tâche personnelle créée par Lucas et visible par Nelson.',
+    '2026-05-28 18:00:00',
+    'todo',
+    1,
+    '2026-05-20 09:50:00',
+    NULL,
+    NULL,
+    3,
+    3,
+    1
+  ),
+  (
+    7,
+    'Préparer mon sac',
+    'Tâche personnelle privée créée par Lucas.',
+    '2026-05-29 18:00:00',
+    'todo',
+    1,
+    '2026-05-20 10:00:00',
+    NULL,
+    NULL,
+    3,
+    3,
     1
   );
 
@@ -291,7 +319,10 @@ INSERT INTO t_task_access (
   (1, 4, 'read',  '2026-05-20 09:30:00', NULL),
 
   (2, 5, 'write', '2026-05-20 09:40:00', NULL),
-  (1, 5, 'none',  '2026-05-20 09:40:00', NULL);
+  (1, 5, 'none',  '2026-05-20 09:40:00', NULL),
+
+  -- Tâche personnelle créée par Lucas, visible uniquement par Nelson.
+  (1, 6, 'read',  '2026-05-20 09:50:00', NULL);
 
 
 -- ============================================================
