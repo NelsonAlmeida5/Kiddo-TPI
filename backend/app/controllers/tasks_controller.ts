@@ -23,6 +23,10 @@ export default class TasksController {
     }
   }
 
+  private getUniqueIds(ids?: number[]) {
+    return [...new Set(ids ?? [])]
+  }
+
   private async hasWriteAccess(parentId: number, taskId: number) {
     const access = await db
       .from('t_task_access')
@@ -44,14 +48,25 @@ export default class TasksController {
     return child
   }
 
+  private async findParentsInSameFamily(parentIds: number[], familyId: number) {
+    if (parentIds.length === 0) {
+      return []
+    }
+
+    return User.query()
+      .whereIn('user_id', parentIds)
+      .where('role', 'parent')
+      .where('current_family_fk', familyId)
+  }
+
   /**
    * Liste les tâches visibles par l'utilisateur connecté.
    *
    * Parent :
-   * - voit les tâches auxquelles il possède un accès dans t_task_access.
+   * - voit les tâches auxquelles il possède un accès read ou write.
    *
    * Enfant :
-   * - voit uniquement les tâches qui lui sont assignées.
+   * - voit uniquement les tâches qui lui sont assignées dans sa famille courante.
    */
   async index({ auth, request, response }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -97,16 +112,18 @@ export default class TasksController {
   }
 
   /**
-   * Crée une tâche pour un enfant.
+   * Crée une tâche.
+   *
+   * Parent :
+   * - crée une tâche pour un enfant de sa famille ;
+   * - définit l'accès des autres parents présents.
+   *
+   * Enfant :
+   * - crée une tâche personnelle pour lui-même ;
+   * - choisit les parents qui peuvent la voir.
    */
   async store({ auth, request, response }: HttpContext) {
-    const parent = auth.getUserOrFail()
-
-    if (parent.role !== 'parent') {
-      return response.forbidden({
-        message: 'Seul un parent peut créer une tâche.',
-      })
-    }
+    const user = auth.getUserOrFail()
 
     const payload = await request.validateUsing(createTaskValidator)
 
@@ -118,11 +135,81 @@ export default class TasksController {
       })
     }
 
-    const child = await this.findChildInSameFamily(payload.assignedChildFk, parent.currentFamilyFk)
+    if (user.role === 'parent') {
+      if (payload.assignedChildFk === undefined) {
+        return response.status(422).send({
+          message: 'Un enfant doit être assigné à la tâche.',
+        })
+      }
 
-    if (!child) {
+      const child = await this.findChildInSameFamily(payload.assignedChildFk, user.currentFamilyFk)
+
+      if (!child) {
+        return response.forbidden({
+          message: 'L’enfant assigné doit appartenir à votre famille.',
+        })
+      }
+
+      const task = await db.transaction(async (trx) => {
+        const createdTask = new Task()
+
+        createdTask.title = payload.title
+        createdTask.description = payload.description ?? null
+        createdTask.dueDate = dueDate
+        createdTask.status = 'todo'
+        createdTask.version = 1
+        createdTask.assignedChildFk = child.userId
+        createdTask.createdByFk = user.userId
+        createdTask.familyFk = user.currentFamilyFk
+
+        createdTask.useTransaction(trx)
+        await createdTask.save()
+
+        const now = new Date()
+        const otherParentsAccess = payload.accessLevelForOtherParents ?? 'none'
+
+        const otherParents = await User.query({ client: trx })
+          .where('current_family_fk', user.currentFamilyFk)
+          .where('role', 'parent')
+          .whereNot('user_id', user.userId)
+
+        const accessRows = [
+          {
+            parent_fk: user.userId,
+            task_fk: createdTask.taskId,
+            access_level: 'write',
+            created_at: now,
+            updated_at: null,
+          },
+          ...otherParents.map((otherParent) => ({
+            parent_fk: otherParent.userId,
+            task_fk: createdTask.taskId,
+            access_level: otherParentsAccess,
+            created_at: now,
+            updated_at: null,
+          })),
+        ]
+
+        await trx.table('t_task_access').insert(accessRows)
+
+        return createdTask
+      })
+
+      return response.created({
+        message: 'Tâche créée avec succès.',
+        task: this.serializeTask(task),
+      })
+    }
+
+    const visibleParentIds = this.getUniqueIds(payload.visibleParentIds)
+    const visibleParents = await this.findParentsInSameFamily(
+      visibleParentIds,
+      user.currentFamilyFk
+    )
+
+    if (visibleParents.length !== visibleParentIds.length) {
       return response.forbidden({
-        message: 'L’enfant assigné doit appartenir à votre famille.',
+        message: 'Un ou plusieurs parents sélectionnés ne font pas partie de votre famille.',
       })
     }
 
@@ -134,65 +221,47 @@ export default class TasksController {
       createdTask.dueDate = dueDate
       createdTask.status = 'todo'
       createdTask.version = 1
-      createdTask.assignedChildFk = child.userId
-      createdTask.createdByFk = parent.userId
-      createdTask.familyFk = parent.currentFamilyFk
+      createdTask.assignedChildFk = user.userId
+      createdTask.createdByFk = user.userId
+      createdTask.familyFk = user.currentFamilyFk
 
       createdTask.useTransaction(trx)
       await createdTask.save()
 
-      const now = new Date()
-      const otherParentsAccess = payload.accessLevelForOtherParents ?? 'none'
+      if (visibleParents.length > 0) {
+        const now = new Date()
 
-      const otherParents = await User.query({ client: trx })
-        .where('current_family_fk', parent.currentFamilyFk)
-        .where('role', 'parent')
-        .whereNot('user_id', parent.userId)
-
-      const accessRows = [
-        {
-          parent_fk: parent.userId,
-          task_fk: createdTask.taskId,
-          access_level: 'write',
-          created_at: now,
-          updated_at: null,
-        },
-        ...otherParents.map((otherParent) => ({
-          parent_fk: otherParent.userId,
-          task_fk: createdTask.taskId,
-          access_level: otherParentsAccess,
-          created_at: now,
-          updated_at: null,
-        })),
-      ]
-
-      await trx.table('t_task_access').insert(accessRows)
+        await trx.table('t_task_access').insert(
+          visibleParents.map((parent) => ({
+            parent_fk: parent.userId,
+            task_fk: createdTask.taskId,
+            access_level: 'read',
+            created_at: now,
+            updated_at: null,
+          }))
+        )
+      }
 
       return createdTask
     })
 
     return response.created({
-      message: 'Tâche créée avec succès.',
+      message: 'Tâche personnelle créée avec succès.',
       task: this.serializeTask(task),
     })
   }
 
   /**
-   * Modifie une tâche non terminée.
+   * Modifie une tâche.
    *
-   * La modification est refusée si :
-   * - l'utilisateur n'est pas parent ;
-   * - le parent n'a pas l'accès write ;
-   * - la tâche est déjà soumise ou validée.
+   * Parent :
+   * - doit avoir l'accès write.
+   *
+   * Enfant :
+   * - peut modifier uniquement une tâche qu'il a créée lui-même.
    */
   async update({ auth, request, response }: HttpContext) {
-    const parent = auth.getUserOrFail()
-
-    if (parent.role !== 'parent') {
-      return response.forbidden({
-        message: 'Seul un parent peut modifier une tâche.',
-      })
-    }
+    const user = auth.getUserOrFail()
 
     const taskId = Number(request.param('id'))
 
@@ -210,19 +279,13 @@ export default class TasksController {
       })
     }
 
-    if (task.familyFk !== parent.currentFamilyFk) {
+    if (task.familyFk !== user.currentFamilyFk) {
       return response.forbidden({
         message: 'Cette tâche n’appartient pas à votre famille.',
       })
     }
 
-    const canWrite = await this.hasWriteAccess(parent.userId, task.taskId)
-
-    if (!canWrite) {
-      return response.forbidden({
-        message: 'Vous n’avez pas le droit de modifier cette tâche.',
-      })
-    }
+    const payload = await request.validateUsing(updateTaskValidator)
 
     if (task.status === 'submitted' || task.status === 'validated') {
       return response.conflict({
@@ -230,59 +293,148 @@ export default class TasksController {
       })
     }
 
-    const payload = await request.validateUsing(updateTaskValidator)
+    if (user.role === 'parent') {
+      const canWrite = await this.hasWriteAccess(user.userId, task.taskId)
 
-    if (payload.dueDate) {
-      const dueDate = DateTime.fromISO(payload.dueDate)
-
-      if (!dueDate.isValid) {
-        return response.status(422).send({
-          message: 'La date d’échéance est invalide.',
-        })
-      }
-
-      task.dueDate = dueDate
-    }
-
-    if (payload.assignedChildFk) {
-      const child = await this.findChildInSameFamily(
-        payload.assignedChildFk,
-        parent.currentFamilyFk
-      )
-
-      if (!child) {
+      if (!canWrite) {
         return response.forbidden({
-          message: 'L’enfant assigné doit appartenir à votre famille.',
+          message: 'Vous n’avez pas le droit de modifier cette tâche.',
         })
       }
 
-      task.assignedChildFk = child.userId
+      if (payload.assignedChildFk) {
+        const child = await this.findChildInSameFamily(
+          payload.assignedChildFk,
+          user.currentFamilyFk
+        )
+
+        if (!child) {
+          return response.forbidden({
+            message: 'L’enfant assigné doit appartenir à votre famille.',
+          })
+        }
+
+        task.assignedChildFk = child.userId
+      }
+
+      if (payload.title !== undefined) {
+        task.title = payload.title
+      }
+
+      if (payload.description !== undefined) {
+        task.description = payload.description
+      }
+
+      if (payload.dueDate) {
+        const dueDate = DateTime.fromISO(payload.dueDate)
+
+        if (!dueDate.isValid) {
+          return response.status(422).send({
+            message: 'La date d’échéance est invalide.',
+          })
+        }
+
+        task.dueDate = dueDate
+      }
+
+      task.version += 1
+      await task.save()
+
+      if (payload.accessLevelForOtherParents) {
+        await db
+          .from('t_task_access')
+          .where('task_fk', task.taskId)
+          .whereNot('parent_fk', user.userId)
+          .update({
+            access_level: payload.accessLevelForOtherParents,
+            updated_at: new Date(),
+          })
+      }
+
+      return response.ok({
+        message: 'Tâche modifiée avec succès.',
+        task: this.serializeTask(task),
+      })
     }
 
-    if (payload.title !== undefined) {
-      task.title = payload.title
+    if (task.createdByFk !== user.userId || task.assignedChildFk !== user.userId) {
+      return response.forbidden({
+        message: 'Un enfant peut modifier uniquement les tâches qu’il a créées.',
+      })
     }
 
-    if (payload.description !== undefined) {
-      task.description = payload.description
+    if (payload.assignedChildFk !== undefined) {
+      return response.forbidden({
+        message: 'Un enfant ne peut pas réassigner une tâche.',
+      })
     }
 
-    task.version += 1
-    await task.save()
+    const visibleParentIds = this.getUniqueIds(payload.visibleParentIds)
+    const visibleParents = await this.findParentsInSameFamily(
+      visibleParentIds,
+      user.currentFamilyFk
+    )
 
-    if (payload.accessLevelForOtherParents) {
-      await db
-        .from('t_task_access')
-        .where('task_fk', task.taskId)
-        .whereNot('parent_fk', parent.userId)
-        .update({
-          access_level: payload.accessLevelForOtherParents,
-          updated_at: new Date(),
-        })
+    if (visibleParents.length !== visibleParentIds.length) {
+      return response.forbidden({
+        message: 'Un ou plusieurs parents sélectionnés ne font pas partie de votre famille.',
+      })
     }
+
+    await db
+      .transaction(async (trx) => {
+        if (payload.title !== undefined) {
+          task.title = payload.title
+        }
+
+        if (payload.description !== undefined) {
+          task.description = payload.description
+        }
+
+        if (payload.dueDate) {
+          const dueDate = DateTime.fromISO(payload.dueDate)
+
+          if (!dueDate.isValid) {
+            throw new Error('INVALID_DUE_DATE')
+          }
+
+          task.dueDate = dueDate
+        }
+
+        task.version += 1
+        task.useTransaction(trx)
+        await task.save()
+
+        if (payload.visibleParentIds !== undefined) {
+          await trx.query().from('t_task_access').where('task_fk', task.taskId).delete()
+
+          if (visibleParents.length > 0) {
+            const now = new Date()
+
+            await trx.table('t_task_access').insert(
+              visibleParents.map((parent) => ({
+                parent_fk: parent.userId,
+                task_fk: task.taskId,
+                access_level: 'read',
+                created_at: now,
+                updated_at: null,
+              }))
+            )
+          }
+        }
+      })
+      .catch((error) => {
+        if (error.message === 'INVALID_DUE_DATE') {
+          return response.status(422).send({
+            message: 'La date d’échéance est invalide.',
+          })
+        }
+
+        throw error
+      })
 
     return response.ok({
-      message: 'Tâche modifiée avec succès.',
+      message: 'Tâche personnelle modifiée avec succès.',
       task: this.serializeTask(task),
     })
   }
@@ -290,16 +442,14 @@ export default class TasksController {
   /**
    * Supprime logiquement une tâche.
    *
-   * La tâche reste en base pour conserver l'historique.
+   * Parent :
+   * - doit avoir l'accès write.
+   *
+   * Enfant :
+   * - peut supprimer uniquement les tâches qu'il a créées.
    */
   async destroy({ auth, request, response }: HttpContext) {
-    const parent = auth.getUserOrFail()
-
-    if (parent.role !== 'parent') {
-      return response.forbidden({
-        message: 'Seul un parent peut supprimer une tâche.',
-      })
-    }
+    const user = auth.getUserOrFail()
 
     const taskId = Number(request.param('id'))
 
@@ -317,17 +467,39 @@ export default class TasksController {
       })
     }
 
-    if (task.familyFk !== parent.currentFamilyFk) {
+    if (task.familyFk !== user.currentFamilyFk) {
       return response.forbidden({
         message: 'Cette tâche n’appartient pas à votre famille.',
       })
     }
 
-    const canWrite = await this.hasWriteAccess(parent.userId, task.taskId)
+    if (user.role === 'parent') {
+      const canWrite = await this.hasWriteAccess(user.userId, task.taskId)
 
-    if (!canWrite) {
+      if (!canWrite) {
+        return response.forbidden({
+          message: 'Vous n’avez pas le droit de supprimer cette tâche.',
+        })
+      }
+
+      task.deletedAt = DateTime.now()
+      task.version += 1
+      await task.save()
+
+      return response.ok({
+        message: 'Tâche supprimée avec succès.',
+      })
+    }
+
+    if (task.createdByFk !== user.userId || task.assignedChildFk !== user.userId) {
       return response.forbidden({
-        message: 'Vous n’avez pas le droit de supprimer cette tâche.',
+        message: 'Un enfant peut supprimer uniquement les tâches qu’il a créées.',
+      })
+    }
+
+    if (task.status === 'submitted' || task.status === 'validated') {
+      return response.conflict({
+        message: 'Une tâche soumise ou validée ne peut pas être supprimée.',
       })
     }
 
@@ -336,7 +508,7 @@ export default class TasksController {
     await task.save()
 
     return response.ok({
-      message: 'Tâche supprimée avec succès.',
+      message: 'Tâche personnelle supprimée avec succès.',
     })
   }
 }
