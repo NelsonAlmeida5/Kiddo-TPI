@@ -320,6 +320,161 @@ button {
 }
 
 /* =========================
+   Dashboard parent
+========================= */
+
+.dashboard-page {
+  display: grid;
+  gap: 24px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 26px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--color-blue-soft);
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-md);
+}
+
+.dashboard-toolbar label {
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.dashboard-toolbar select {
+  padding: 10px 12px;
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+}
+
+.loading-text {
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.task-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.status-section {
+  padding: 22px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.status-section h2 {
+  margin: 0 0 16px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.45rem;
+  color: var(--color-green);
+}
+
+.task-list {
+  display: grid;
+  gap: 14px;
+}
+
+.task-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  background: var(--color-surface-soft);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.task-card h3 {
+  margin: 0 0 6px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.25rem;
+}
+
+.task-description {
+  margin: 0 0 8px;
+  color: var(--color-muted);
+}
+
+.task-meta {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  padding: 16px;
+  background: var(--color-yellow-soft);
+  border: 2px solid var(--color-yellow-border);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+/* Couleurs par statut du dashboard parent */
+
+.status-section.status-section--todo {
+  background: #8deeff;
+  border-color: #2f3437;
+}
+
+.status-section.status-section--submitted {
+  background: #ffe666;
+  border-color: #2f3437;
+}
+
+.status-section.status-section--validated {
+  background: #95ff91;
+  border-color: #2f3437;
+}
+
+.status-section.status-section--refused {
+  background: #ff6e6e;
+  border-color: #2f3437;
+}
+
+.status-section h2 {
+  color: #2f3437;
+}
+
+.status-section .task-card {
+  background: #f1f8fb;
+  border-color: #2f3437;
+}
+
+.status-section .secondary-button {
+  background: #c7edf8;
+  border-color: #9bd6e8;
+  color: #24424c;
+}
+
+/* =========================
    Responsive
 ========================= */
 
@@ -343,5 +498,27 @@ button {
 
   .page-card {
     padding: 24px;
+  }
+
+  .dashboard-header,
+  .task-card {
+    flex-direction: column;
+  }
+
+  .dashboard-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-toolbar select {
+    width: 100%;
+  }
+
+  .task-actions {
+    justify-content: flex-start;
+  }
+
+  .task-sections {
+    grid-template-columns: 1fr;
   }
 }
