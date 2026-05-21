@@ -141,6 +141,41 @@ ALTER TABLE t_family
 
 
 -- ============================================================
+-- 4.1 Table auth_access_tokens
+-- ------------------------------------------------------------
+-- Table technique utilisée par AdonisJS pour l'authentification
+-- par access tokens.
+--
+-- Cette table ne contient pas de donnée métier. Elle stocke les
+-- tokens sous forme hashée afin de permettre l'authentification
+-- des utilisateurs connectés.
+--
+-- ON DELETE CASCADE est accepté ici car il s'agit uniquement de
+-- tokens techniques : si un utilisateur est supprimé, ses tokens
+-- n'ont plus d'utilité.
+-- ============================================================
+
+CREATE TABLE auth_access_tokens(
+   id INT AUTO_INCREMENT,
+   tokenable_id INT NOT NULL,
+   type VARCHAR(255) NOT NULL,
+   name VARCHAR(255) NULL,
+   hash VARCHAR(255) NOT NULL,
+   abilities TEXT NOT NULL,
+   created_at DATETIME NULL,
+   updated_at DATETIME NULL,
+   last_used_at DATETIME NULL,
+   expires_at DATETIME NULL,
+
+   PRIMARY KEY(id),
+
+   CONSTRAINT fk_auth_access_tokens_user
+      FOREIGN KEY(tokenable_id)
+      REFERENCES t_user(user_id)
+      ON DELETE CASCADE
+);
+
+-- ============================================================
 -- 5. Table t_task
 -- ------------------------------------------------------------
 -- Représente une tâche ou un devoir à réaliser.
