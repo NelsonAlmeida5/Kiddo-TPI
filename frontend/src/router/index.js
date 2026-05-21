@@ -8,6 +8,7 @@ import ParentDashboardView from '@/views/ParentDashboardView.vue'
 import ChildTasksView from '@/views/ChildTasksView.vue'
 import FamilyView from '@/views/FamilyView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
+import ParentTaskCreateView from '@/views/ParentTaskCreateView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -34,6 +35,12 @@ const router = createRouter({
       path: '/parent/dashboard',
       name: 'parent-dashboard',
       component: ParentDashboardView,
+      meta: { requiresAuth: true, role: 'parent' },
+    },
+    {
+      path: '/parent/tasks/new',
+      name: 'parent-task-create',
+      component: ParentTaskCreateView,
       meta: { requiresAuth: true, role: 'parent' },
     },
     {

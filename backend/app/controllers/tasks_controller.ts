@@ -5,6 +5,13 @@ import Task from '#models/task'
 import User from '#models/user'
 import { createTaskValidator, updateTaskValidator } from '#validators/task'
 
+type ParentAccessLevel = 'none' | 'read' | 'write'
+
+type ParentAccessPayload = {
+  parentId: number
+  accessLevel: ParentAccessLevel
+}
+
 export default class TasksController {
   private serializeTask(task: Task) {
     return {
@@ -57,6 +64,13 @@ export default class TasksController {
       .whereIn('user_id', parentIds)
       .where('role', 'parent')
       .where('current_family_fk', familyId)
+  }
+
+  private async findOtherParentsInSameFamily(parentId: number, familyId: number) {
+    return User.query()
+      .where('current_family_fk', familyId)
+      .where('role', 'parent')
+      .whereNot('user_id', parentId)
   }
 
   /**
@@ -116,7 +130,8 @@ export default class TasksController {
    *
    * Parent :
    * - crée une tâche pour un enfant de sa famille ;
-   * - définit l'accès des autres parents présents.
+   * - reçoit automatiquement l'accès write ;
+   * - définit l'accès individuellement pour chaque co-parent.
    *
    * Enfant :
    * - crée une tâche personnelle pour lui-même ;
@@ -150,6 +165,42 @@ export default class TasksController {
         })
       }
 
+      const parentAccesses = (payload.parentAccesses ?? []) as ParentAccessPayload[]
+      const requestedParentIds = parentAccesses.map((access) => access.parentId)
+      const uniqueParentIds = this.getUniqueIds(requestedParentIds)
+
+      if (uniqueParentIds.length !== requestedParentIds.length) {
+        return response.status(422).send({
+          message: 'Un co-parent ne peut pas être défini plusieurs fois.',
+        })
+      }
+
+      if (uniqueParentIds.includes(user.userId)) {
+        return response.status(422).send({
+          message: 'Le parent créateur ne doit pas être inclus dans les droits co-parent.',
+        })
+      }
+
+      const otherParents = await this.findOtherParentsInSameFamily(
+        user.userId,
+        user.currentFamilyFk
+      )
+      const allowedParentIds = new Set(otherParents.map((parent) => parent.userId))
+
+      const hasInvalidParent = uniqueParentIds.some((parentId) => !allowedParentIds.has(parentId))
+
+      if (hasInvalidParent) {
+        return response.forbidden({
+          message: 'Un ou plusieurs co-parents ne font pas partie de votre famille.',
+        })
+      }
+
+      const accessByParentId = new Map<number, string>()
+
+      parentAccesses.forEach((access) => {
+        accessByParentId.set(access.parentId, access.accessLevel)
+      })
+
       const task = await db.transaction(async (trx) => {
         const createdTask = new Task()
 
@@ -166,12 +217,7 @@ export default class TasksController {
         await createdTask.save()
 
         const now = new Date()
-        const otherParentsAccess = payload.accessLevelForOtherParents ?? 'none'
-
-        const otherParents = await User.query({ client: trx })
-          .where('current_family_fk', user.currentFamilyFk)
-          .where('role', 'parent')
-          .whereNot('user_id', user.userId)
+        const defaultOtherParentsAccess = payload.accessLevelForOtherParents ?? 'none'
 
         const accessRows = [
           {
@@ -184,7 +230,7 @@ export default class TasksController {
           ...otherParents.map((otherParent) => ({
             parent_fk: otherParent.userId,
             task_fk: createdTask.taskId,
-            access_level: otherParentsAccess,
+            access_level: accessByParentId.get(otherParent.userId) ?? defaultOtherParentsAccess,
             created_at: now,
             updated_at: null,
           })),
@@ -302,7 +348,7 @@ export default class TasksController {
         })
       }
 
-      if (payload.assignedChildFk) {
+      if (payload.assignedChildFk !== undefined) {
         const child = await this.findChildInSameFamily(
           payload.assignedChildFk,
           user.currentFamilyFk
@@ -381,57 +427,49 @@ export default class TasksController {
       })
     }
 
-    await db
-      .transaction(async (trx) => {
-        if (payload.title !== undefined) {
-          task.title = payload.title
+    if (payload.dueDate) {
+      const dueDate = DateTime.fromISO(payload.dueDate)
+
+      if (!dueDate.isValid) {
+        return response.status(422).send({
+          message: 'La date d’échéance est invalide.',
+        })
+      }
+
+      task.dueDate = dueDate
+    }
+
+    await db.transaction(async (trx) => {
+      if (payload.title !== undefined) {
+        task.title = payload.title
+      }
+
+      if (payload.description !== undefined) {
+        task.description = payload.description
+      }
+
+      task.version += 1
+      task.useTransaction(trx)
+      await task.save()
+
+      if (payload.visibleParentIds !== undefined) {
+        await trx.query().from('t_task_access').where('task_fk', task.taskId).delete()
+
+        if (visibleParents.length > 0) {
+          const now = new Date()
+
+          await trx.table('t_task_access').insert(
+            visibleParents.map((parent) => ({
+              parent_fk: parent.userId,
+              task_fk: task.taskId,
+              access_level: 'read',
+              created_at: now,
+              updated_at: null,
+            }))
+          )
         }
-
-        if (payload.description !== undefined) {
-          task.description = payload.description
-        }
-
-        if (payload.dueDate) {
-          const dueDate = DateTime.fromISO(payload.dueDate)
-
-          if (!dueDate.isValid) {
-            throw new Error('INVALID_DUE_DATE')
-          }
-
-          task.dueDate = dueDate
-        }
-
-        task.version += 1
-        task.useTransaction(trx)
-        await task.save()
-
-        if (payload.visibleParentIds !== undefined) {
-          await trx.query().from('t_task_access').where('task_fk', task.taskId).delete()
-
-          if (visibleParents.length > 0) {
-            const now = new Date()
-
-            await trx.table('t_task_access').insert(
-              visibleParents.map((parent) => ({
-                parent_fk: parent.userId,
-                task_fk: task.taskId,
-                access_level: 'read',
-                created_at: now,
-                updated_at: null,
-              }))
-            )
-          }
-        }
-      })
-      .catch((error) => {
-        if (error.message === 'INVALID_DUE_DATE') {
-          return response.status(422).send({
-            message: 'La date d’échéance est invalide.',
-          })
-        }
-
-        throw error
-      })
+      }
+    })
 
     return response.ok({
       message: 'Tâche personnelle modifiée avec succès.',

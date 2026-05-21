@@ -475,6 +475,129 @@ button {
 }
 
 /* =========================
+   Formulaire création tâche parent
+========================= */
+
+.task-form-page {
+  display: grid;
+  gap: 24px;
+}
+
+.task-form-card {
+  padding: 34px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.task-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 34px;
+}
+
+.task-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 40px;
+}
+
+.task-form-left,
+.task-form-right {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+}
+
+.rights-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.rights-panel h2 {
+  margin: 0;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.2rem;
+}
+
+.rights-panel > p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.rights-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  background: var(--color-blue-soft);
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+}
+
+.rights-row p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.rights-row select {
+  min-width: 170px;
+  align-self: start;
+  padding: 9px 10px;
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+  background: white;
+}
+
+.help-text {
+  font-size: 0.95rem;
+}
+
+.selected-access-box {
+  padding: 14px;
+  background: var(--color-yellow-soft);
+  border: 2px solid var(--color-yellow-border);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+}
+
+/* Gestion individuelle des droits co-parent */
+
+.rights-list {
+  display: grid;
+  gap: 12px;
+}
+
+.co-parent-access-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: var(--color-blue-soft);
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+}
+
+.co-parent-access-row p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.co-parent-access-row select {
+  min-width: 170px;
+  padding: 9px 10px;
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+  background: white;
+}
+
+/* =========================
    Responsive
 ========================= */
 
@@ -520,5 +643,27 @@ button {
 
   .task-sections {
     grid-template-columns: 1fr;
+  }
+
+  .task-form-header,
+  .rights-row {
+    flex-direction: column;
+  }
+
+  .task-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rights-row select {
+    width: 100%;
+  }
+
+  .co-parent-access-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .co-parent-access-row select {
+    width: 100%;
   }
 }

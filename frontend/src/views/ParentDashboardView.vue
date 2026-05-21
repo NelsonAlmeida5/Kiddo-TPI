@@ -81,7 +81,9 @@ onMounted(() => {
         <p class="page-subtitle">Suivi des devoirs et tâches des enfants.</p>
       </div>
 
-      <button class="primary-button" type="button">Ajouter une tâche</button>
+      <RouterLink class="primary-button" :to="{ name: 'parent-task-create' }">
+        Ajouter une tâche
+      </RouterLink>
     </div>
 
     <div class="dashboard-toolbar">

@@ -14,10 +14,23 @@ export const createTaskValidator = vine.compile(
     assignedChildFk: vine.number().optional(),
 
     /**
-     * Utilisé par un parent pour définir le niveau d'accès des autres parents
-     * présents dans la famille au moment de la création.
+     * Ancien fonctionnement : un même niveau d'accès pour tous les autres parents.
+     * Conservé pour compatibilité avec les tests existants.
      */
     accessLevelForOtherParents: vine.enum(['none', 'read', 'write']).optional(),
+
+    /**
+     * Nouveau fonctionnement : droits définis individuellement par co-parent.
+     * Le parent créateur ne doit pas être inclus ici, car il reçoit automatiquement write.
+     */
+    parentAccesses: vine
+      .array(
+        vine.object({
+          parentId: vine.number(),
+          accessLevel: vine.enum(['none', 'read', 'write']),
+        })
+      )
+      .optional(),
 
     /**
      * Utilisé par un enfant lorsqu'il crée une tâche personnelle.

@@ -7,3 +7,9 @@ export const getTasks = async (sort = 'due_date') => {
 
   return response.data.tasks
 }
+
+export const createTask = async (payload) => {
+  const response = await api.post('/tasks', payload)
+
+  return response.data.task
+}
