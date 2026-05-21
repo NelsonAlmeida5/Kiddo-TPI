@@ -48,6 +48,10 @@ const formatDate = (dateValue) => {
   }).format(new Date(dateValue))
 }
 
+const getTaskButtonLabel = (task) => {
+  return task.status === 'submitted' ? 'Voir preuve' : 'Détail'
+}
+
 const loadDashboard = async () => {
   loading.value = true
   error.value = null
@@ -129,11 +133,12 @@ onMounted(() => {
             </div>
 
             <div class="task-actions">
-              <button v-if="task.status === 'submitted'" class="secondary-button" type="button">
-                Voir preuve
-              </button>
-
-              <button class="secondary-button" type="button">Détail</button>
+              <RouterLink
+                class="secondary-button"
+                :to="{ name: 'parent-task-detail', params: { id: task.taskId } }"
+              >
+                {{ getTaskButtonLabel(task) }}
+              </RouterLink>
             </div>
           </article>
         </div>

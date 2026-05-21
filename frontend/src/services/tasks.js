@@ -8,6 +8,12 @@ export const getTasks = async (sort = 'due_date') => {
   return response.data.tasks
 }
 
+export const getVisibleTaskById = async (taskId) => {
+  const tasks = await getTasks()
+
+  return tasks.find((task) => task.taskId === Number(taskId)) || null
+}
+
 export const createTask = async (payload) => {
   const response = await api.post('/tasks', payload)
 
