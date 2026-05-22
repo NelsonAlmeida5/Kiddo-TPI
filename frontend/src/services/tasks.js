@@ -19,3 +19,9 @@ export const createTask = async (payload) => {
 
   return response.data.task
 }
+
+export const updateTask = async (taskId, payload) => {
+  const response = await api.put(`/tasks/${taskId}`, payload)
+
+  return response.data.task
+}

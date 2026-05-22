@@ -750,6 +750,19 @@ button {
   width: auto;
 }
 
+.task-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 850px) {
+  .task-detail-header-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* =========================
    Responsive
 ========================= */

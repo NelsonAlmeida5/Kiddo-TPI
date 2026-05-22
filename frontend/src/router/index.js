@@ -10,6 +10,7 @@ import FamilyView from '@/views/FamilyView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
 import ParentTaskCreateView from '@/views/ParentTaskCreateView.vue'
 import ParentTaskDetailView from '@/views/ParentTaskDetailView.vue'
+import ParentTaskEditView from '@/views/ParentTaskEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,6 +49,12 @@ const router = createRouter({
       path: '/parent/tasks/:id',
       name: 'parent-task-detail',
       component: ParentTaskDetailView,
+      meta: { requiresAuth: true, role: 'parent' },
+    },
+    {
+      path: '/parent/tasks/:id/edit',
+      name: 'parent-task-edit',
+      component: ParentTaskEditView,
       meta: { requiresAuth: true, role: 'parent' },
     },
     {

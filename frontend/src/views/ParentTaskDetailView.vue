@@ -104,6 +104,10 @@ const submitDecision = async (decision) => {
 onMounted(() => {
   loadTaskDetail()
 })
+
+const isTaskEditable = computed(() => {
+  return task.value && ['todo', 'refused'].includes(task.value.status)
+})
 </script>
 
 <template>
@@ -128,9 +132,19 @@ onMounted(() => {
           <h1 class="page-title">{{ task.title }}</h1>
         </div>
 
-        <span :class="['status-badge', `status-badge--${task.status}`]">
-          {{ statusLabels[task.status] || task.status }}
-        </span>
+        <div class="task-detail-header-actions">
+          <RouterLink
+            v-if="isTaskEditable"
+            class="secondary-button"
+            :to="{ name: 'parent-task-edit', params: { id: task.taskId } }"
+          >
+            Modifier
+          </RouterLink>
+
+          <span :class="['status-badge', `status-badge--${task.status}`]">
+            {{ statusLabels[task.status] || task.status }}
+          </span>
+        </div>
       </div>
 
       <div class="task-detail-grid">
