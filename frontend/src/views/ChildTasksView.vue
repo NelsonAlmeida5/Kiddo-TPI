@@ -202,8 +202,6 @@ onMounted(() => {
                     <h3>{{ task.title }}</h3>
                     <p class="task-meta">Échéance : {{ formatDate(task.dueDate) }}</p>
                   </div>
-
-                  <span class="child-status-pill child-status-pill--submitted">En attente</span>
                 </div>
 
                 <p v-if="task.description" class="task-description">
@@ -237,8 +235,6 @@ onMounted(() => {
                     <h3>{{ task.title }}</h3>
                     <p class="task-meta">Échéance : {{ formatDate(task.dueDate) }}</p>
                   </div>
-
-                  <span class="child-status-pill child-status-pill--validated">Validée</span>
                 </div>
 
                 <p v-if="task.description" class="task-description">

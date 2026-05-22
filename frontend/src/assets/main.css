@@ -840,15 +840,6 @@ button {
 
 .child-status-pill--refused {
   background: #ff6e6e;
-  color: #ffffff;
-}
-
-.child-status-pill--submitted {
-  background: #ffe666;
-}
-
-.child-status-pill--validated {
-  background: #95ff91;
 }
 
 .refused-box,
