@@ -1,0 +1,51 @@
+name: Backend CD to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-cd.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Install production dependencies in build output
+        working-directory: backend/build
+        run: npm ci --omit=dev
+
+      - name: Create deployment zip
+        run: |
+          cd build
+          zip -r ../../backend-deploy.zip .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: api-kiddo-nelalm
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+          package: backend-deploy.zip
