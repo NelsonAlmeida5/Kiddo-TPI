@@ -1,7 +1,10 @@
 import env from '#start/env'
 import { defineConfig } from '@adonisjs/lucid'
 
+const dbHost = env.get('DB_HOST')
+const isAzureMySql = dbHost.includes('mysql.database.azure.com')
 const isProduction = env.get('NODE_ENV') === 'production'
+const useSsl = isAzureMySql || isProduction
 
 const dbConfig = defineConfig({
   connection: 'mysql',
@@ -9,7 +12,7 @@ const dbConfig = defineConfig({
     mysql: {
       client: 'mysql2',
       connection: {
-        host: env.get('DB_HOST'),
+        host: dbHost,
         port: env.get('DB_PORT'),
         user: env.get('DB_USER'),
         password: env.get('DB_PASSWORD'),
@@ -17,9 +20,9 @@ const dbConfig = defineConfig({
 
         /*
          * Azure Database for MySQL exige une connexion sécurisée.
-         * En local, le SSL n'est pas activé afin de garder Docker/MySQL simple.
+         * En local Docker, SSL reste désactivé.
          */
-        ...(isProduction
+        ...(useSsl
           ? {
               ssl: {
                 minVersion: 'TLSv1.2',
