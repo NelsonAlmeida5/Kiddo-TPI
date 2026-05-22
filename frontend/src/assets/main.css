@@ -756,11 +756,144 @@ button {
   gap: 14px;
 }
 
-@media (max-width: 850px) {
-  .task-detail-header-actions {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+/* =========================
+   Vue enfant - Mes tâches
+========================= */
+
+.child-tasks-page {
+  display: grid;
+  gap: 24px;
+}
+
+.child-section {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 2px solid #2f3437;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.child-section h2 {
+  margin: 0;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.5rem;
+  color: #2f3437;
+}
+
+.child-section--tasks {
+  background: #8deeff;
+}
+
+.child-section--pending {
+  background: #ffe666;
+}
+
+.child-section--completed {
+  background: #95ff91;
+}
+
+.child-task-list {
+  display: grid;
+  gap: 14px;
+}
+
+.child-task-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: #ffffff;
+  border: 2px solid #2f3437;
+  border-radius: var(--radius-md);
+}
+
+.child-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.child-task-card h3 {
+  margin: 0 0 6px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.25rem;
+}
+
+.child-status-pill {
+  min-width: 86px;
+  min-height: 40px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 12px;
+  border: 2px solid #2f3437;
+  border-radius: 999px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-weight: 700;
+  text-align: center;
+}
+
+.child-status-pill--todo {
+  background: #8deeff;
+}
+
+.child-status-pill--refused {
+  background: #ff6e6e;
+  color: #ffffff;
+}
+
+.child-status-pill--submitted {
+  background: #ffe666;
+}
+
+.child-status-pill--validated {
+  background: #95ff91;
+}
+
+.refused-box,
+.proof-preview {
+  padding: 14px;
+  background: var(--color-surface-soft);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.refused-box p,
+.proof-preview p {
+  margin: 6px 0 0;
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.success-message {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #dcfce7;
+  border: 2px solid #86efac;
+  color: #166534;
+  font-weight: 800;
+}
+
+.child-tasks-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.child-tasks-main {
+  display: grid;
+  gap: 24px;
+}
+
+.child-tasks-side {
+  display: grid;
+  gap: 24px;
+}
+
+.child-tasks-side .child-section {
+  height: fit-content;
 }
 
 /* =========================
@@ -838,6 +971,27 @@ button {
   }
 
   .task-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .child-task-header {
+    flex-direction: column;
+  }
+
+  .child-status-pill {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 850px) {
+  .task-detail-header-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .child-tasks-layout {
     grid-template-columns: 1fr;
   }
 }
