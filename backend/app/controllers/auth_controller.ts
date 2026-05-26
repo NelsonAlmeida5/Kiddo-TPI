@@ -92,17 +92,23 @@ export default class AuthController {
   async login({ request, response }: HttpContext) {
     const payload = await request.validateUsing(loginValidator)
 
-    const user = await User.verifyCredentials(payload.username, payload.password)
+    try {
+      const user = await User.verifyCredentials(payload.username, payload.password)
 
-    const token = await User.accessTokens.create(user, ['*'], {
-      name: 'kiddo_web',
-    })
+      const token = await User.accessTokens.create(user, ['*'], {
+        name: 'kiddo_web',
+      })
 
-    return response.ok({
-      message: 'Connexion réussie.',
-      user: this.serializeUser(user),
-      token,
-    })
+      return response.ok({
+        message: 'Connexion réussie.',
+        user: this.serializeUser(user),
+        token,
+      })
+    } catch {
+      return response.unauthorized({
+        message: 'Nom d’utilisateur ou mot de passe incorrect.',
+      })
+    }
   }
 
   /**
