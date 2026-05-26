@@ -7,30 +7,59 @@ import User from '#models/user'
 import { createInvitationValidator, respondInvitationValidator } from '#validators/invitation'
 
 export default class InvitationsController {
-  private serializeInvitation(invitation: Invitation) {
+  private async serializeInvitation(invitation: Invitation) {
+    const inviter = await User.find(invitation.inviterFk)
+    const invitedUser = await User.find(invitation.invitedUserFk)
+    const family = await Family.find(invitation.familyFk)
+
     return {
       invitationId: invitation.invitationId,
       status: invitation.status,
+
       invitedUserFk: invitation.invitedUserFk,
+      invitedUsername: invitedUser?.username ?? null,
+      invitedUserName: invitedUser?.name ?? null,
+      invitedUserRole: invitedUser?.role ?? null,
+
       inviterFk: invitation.inviterFk,
+      inviterUsername: inviter?.username ?? null,
+      inviterName: inviter?.name ?? null,
+
       familyFk: invitation.familyFk,
+      familyName: family?.name ?? null,
+
       createdAt: invitation.createdAt?.toISO(),
       respondedAt: invitation.respondedAt?.toISO(),
     }
   }
 
+  private async serializeInvitations(invitations: Invitation[]) {
+    return Promise.all(invitations.map((invitation) => this.serializeInvitation(invitation)))
+  }
+
   /**
-   * Liste les invitations reçues par l'utilisateur connecté.
+   * Liste les invitations reçues et envoyées par l'utilisateur connecté.
    */
   async index({ auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
 
-    const invitations = await Invitation.query()
+    const receivedInvitations = await Invitation.query()
       .where('invited_user_fk', user.userId)
       .orderBy('created_at', 'desc')
 
+    const sentInvitations = await Invitation.query()
+      .where('inviter_fk', user.userId)
+      .orderBy('created_at', 'desc')
+
+    const serializedReceivedInvitations = await this.serializeInvitations(receivedInvitations)
+    const serializedSentInvitations = await this.serializeInvitations(sentInvitations)
+
     return response.ok({
-      invitations: invitations.map((invitation) => this.serializeInvitation(invitation)),
+      // Compatibilité avec le frontend existant
+      invitations: serializedReceivedInvitations,
+
+      receivedInvitations: serializedReceivedInvitations,
+      sentInvitations: serializedSentInvitations,
     })
   }
 
@@ -96,7 +125,7 @@ export default class InvitationsController {
 
     return response.created({
       message: 'Invitation envoyée avec succès.',
-      invitation: this.serializeInvitation(invitation),
+      invitation: await this.serializeInvitation(invitation),
     })
   }
 
@@ -147,7 +176,7 @@ export default class InvitationsController {
 
       return response.ok({
         message: 'Invitation refusée.',
-        invitation: this.serializeInvitation(invitation),
+        invitation: await this.serializeInvitation(invitation),
       })
     }
 
@@ -217,7 +246,7 @@ export default class InvitationsController {
 
     return response.ok({
       message: 'Invitation acceptée.',
-      invitation: this.serializeInvitation(updatedInvitation),
+      invitation: await this.serializeInvitation(updatedInvitation),
     })
   }
 
@@ -260,7 +289,7 @@ export default class InvitationsController {
 
     return response.ok({
       message: 'Invitation annulée.',
-      invitation: this.serializeInvitation(invitation),
+      invitation: await this.serializeInvitation(invitation),
     })
   }
 }
