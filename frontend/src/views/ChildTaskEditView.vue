@@ -1,124 +1,124 @@
 <script setup>
-  import { computed, onMounted, reactive, ref } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
-  import { useAuthStore } from '@/stores/auth'
-  import { getFamily } from '@/services/family'
-  import { getVisibleTaskById, updateTask } from '@/services/tasks'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { getFamily } from '@/services/family'
+import { getVisibleTaskById, updateTask } from '@/services/tasks'
 
-  const route = useRoute()
-  const router = useRouter()
-  const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
-  const task = ref(null)
-  const members = ref([])
-  const loading = ref(false)
-  const saving = ref(false)
-  const error = ref(null)
+const task = ref(null)
+const members = ref([])
+const loading = ref(false)
+const saving = ref(false)
+const error = ref(null)
 
-  const form = reactive({
-    title: '',
-    description: '',
-    dueDate: '',
-    visibleParentIds: [],
-  })
+const form = reactive({
+  title: '',
+  description: '',
+  dueDate: '',
+  visibleParentIds: [],
+})
 
-  const parents = computed(() => {
-    return members.value.filter((member) => member.role === 'parent')
-  })
+const parents = computed(() => {
+  return members.value.filter((member) => member.role === 'parent')
+})
 
-  const isOwnTask = computed(() => {
-    return (
-      task.value &&
-      task.value.createdByFk === authStore.user?.userId &&
-      task.value.assignedChildFk === authStore.user?.userId
-    )
-  })
+const isOwnTask = computed(() => {
+  return (
+    task.value &&
+    task.value.createdByFk === authStore.user?.userId &&
+    task.value.assignedChildFk === authStore.user?.userId
+  )
+})
 
-  const isTaskEditable = computed(() => {
-    return task.value && isOwnTask.value && ['todo', 'refused'].includes(task.value.status)
-  })
+const isTaskEditable = computed(() => {
+  return task.value && isOwnTask.value && ['todo', 'refused'].includes(task.value.status)
+})
 
-  const formatDateForInput = (dateValue) => {
-    if (!dateValue) {
-      return ''
-    }
-
-    return new Date(dateValue).toISOString().slice(0, 10)
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) {
+    return ''
   }
 
-  const getTaskVisibleParentIds = (taskData) => {
-    if (Array.isArray(taskData.visibleParentIds)) {
-      return taskData.visibleParentIds
-    }
+  return new Date(dateValue).toISOString().slice(0, 10)
+}
 
-    if (Array.isArray(taskData.parentAccesses)) {
-      return taskData.parentAccesses.map((access) => access.parentFk)
-    }
-
-    return []
+const getTaskVisibleParentIds = (taskData) => {
+  if (Array.isArray(taskData.visibleParentIds)) {
+    return taskData.visibleParentIds
   }
 
-  const loadEditPage = async () => {
-    loading.value = true
-    error.value = null
-
-    try {
-      const [taskData, familyData] = await Promise.all([
-        getVisibleTaskById(route.params.id),
-        getFamily(),
-      ])
-
-      if (!taskData) {
-        error.value = 'Tâche introuvable ou inaccessible.'
-        return
-      }
-
-      task.value = taskData
-      members.value = familyData.members || []
-
-      form.title = taskData.title
-      form.description = taskData.description || ''
-      form.dueDate = formatDateForInput(taskData.dueDate)
-      form.visibleParentIds = getTaskVisibleParentIds(taskData)
-    } catch {
-      error.value = 'Impossible de charger la tâche.'
-    } finally {
-      loading.value = false
-    }
+  if (Array.isArray(taskData.parentAccesses)) {
+    return taskData.parentAccesses.map((access) => access.parentFk)
   }
 
-  const submitEdit = async () => {
-    if (!task.value) {
+  return []
+}
+
+const loadEditPage = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const [taskData, familyData] = await Promise.all([
+      getVisibleTaskById(route.params.id),
+      getFamily(),
+    ])
+
+    if (!taskData) {
+      error.value = 'Tâche introuvable ou inaccessible.'
       return
     }
 
-    if (!isTaskEditable.value) {
-      error.value = 'Cette tâche ne peut pas être modifiée.'
-      return
-    }
+    task.value = taskData
+    members.value = familyData.members || []
 
-    saving.value = true
-    error.value = null
+    form.title = taskData.title
+    form.description = taskData.description || ''
+    form.dueDate = formatDateForInput(taskData.dueDate)
+    form.visibleParentIds = getTaskVisibleParentIds(taskData)
+  } catch {
+    error.value = 'Impossible de charger la tâche.'
+  } finally {
+    loading.value = false
+  }
+}
 
-    try {
-      await updateTask(task.value.taskId, {
-        title: form.title,
-        description: form.description || undefined,
-        dueDate: `${form.dueDate}T18:00:00`,
-        visibleParentIds: form.visibleParentIds.map(Number),
-      })
-
-      router.push({ name: 'child-tasks' })
-    } catch (requestError) {
-      error.value = requestError.response?.data?.message || 'Impossible de modifier la tâche.'
-    } finally {
-      saving.value = false
-    }
+const submitEdit = async () => {
+  if (!task.value) {
+    return
   }
 
-  onMounted(() => {
-    loadEditPage()
-  })
+  if (!isTaskEditable.value) {
+    error.value = 'Cette tâche ne peut pas être modifiée.'
+    return
+  }
+
+  saving.value = true
+  error.value = null
+
+  try {
+    await updateTask(task.value.taskId, {
+      title: form.title,
+      description: form.description || undefined,
+      dueDate: `${form.dueDate}T18:00:00`,
+      visibleParentIds: form.visibleParentIds.map(Number),
+    })
+
+    router.push({ name: 'child-tasks' })
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || 'Impossible de modifier la tâche.'
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(() => {
+  loadEditPage()
+})
 </script>
 
 <template>
@@ -217,11 +217,6 @@
               required
               :disabled="!isTaskEditable"
             />
-          </div>
-
-          <div class="selected-access-box">
-            Parents sélectionnés :
-            <strong>{{ form.visibleParentIds.length }}</strong>
           </div>
         </div>
       </div>
