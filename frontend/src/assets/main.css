@@ -29,6 +29,11 @@
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 8px;
+
+  --kiddo-green: #ffc400;
+  --kiddo-red: #ff4b57;
+  --kiddo-yellow: #cc00ff;
+  --kiddo-blue: #ff5e00;
 }
 
 * {
@@ -84,15 +89,40 @@ button {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-family: 'Fredoka', system-ui, sans-serif;
-  font-size: 1.55rem;
-  font-weight: 700;
-  color: var(--color-black);
 }
 
-.brand-mark {
-  display: none;
+.kiddo-logo {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.kiddo-logo--nav {
+  font-size: 1.65rem;
+}
+
+.kiddo-logo--hero {
+  margin: 0;
+  font-size: clamp(4rem, 10vw, 6.8rem);
+}
+
+.kiddo-logo__letter--k {
+  color: var(--kiddo-green);
+}
+
+.kiddo-logo__letter--i {
+  color: var(--kiddo-red);
+}
+
+.kiddo-logo__letter--d {
+  color: var(--kiddo-yellow);
+}
+
+.kiddo-logo__letter--do {
+  color: var(--kiddo-blue);
 }
 
 .main-nav {
@@ -1057,6 +1087,46 @@ button {
 }
 
 /* =========================
+   Page Accueil
+========================= */
+
+.home-page {
+  display: flex;
+  justify-content: center;
+}
+
+.home-hero {
+  width: min(760px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 34px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.home-subtitle {
+  margin: -8px 0 4px;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.home-actions {
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.home-image {
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+/* =========================
    Responsive
 ========================= */
 @media (max-width: 620px) {
@@ -1151,6 +1221,18 @@ button {
 
   .child-status-pill {
     align-self: flex-start;
+  }
+
+  .kiddo-logo--hero {
+    font-size: 3.8rem;
+  }
+
+  .home-hero {
+    padding: 24px;
+  }
+
+  .home-image {
+    max-height: 240px;
   }
 }
 

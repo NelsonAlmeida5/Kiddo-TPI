@@ -26,9 +26,13 @@ const logout = async () => {
 
 <template>
   <header class="app-header">
-    <RouterLink class="brand" :to="dashboardRoute">
-      <span class="brand-mark">K</span>
-      <span>Kiddo</span>
+    <RouterLink class="brand" :to="dashboardRoute" aria-label="Kiddo">
+      <span class="kiddo-logo kiddo-logo--nav" aria-hidden="true">
+        <span class="kiddo-logo__letter kiddo-logo__letter--k">K</span>
+        <span class="kiddo-logo__letter kiddo-logo__letter--i">i</span>
+        <span class="kiddo-logo__letter kiddo-logo__letter--d">d</span>
+        <span class="kiddo-logo__letter kiddo-logo__letter--do">do</span>
+      </span>
     </RouterLink>
 
     <nav class="main-nav">
