@@ -338,7 +338,7 @@ onMounted(() => {
               </div>
 
               <div class="family-member-actions">
-                <span v-if="child.userId === currentUserId" class="member-badge">Vous</span>
+                <span v-if="child.userId === currentUserId" class="member-badge">Toi-même</span>
 
                 <button
                   v-if="isFamilyOwner"
