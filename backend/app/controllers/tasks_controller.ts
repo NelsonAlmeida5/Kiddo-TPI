@@ -520,6 +520,12 @@ export default class TasksController {
         })
       }
 
+      if (!['todo', 'refused'].includes(task.status)) {
+        return response.conflict({
+          message: 'Une tâche soumise ou validée ne peut pas être supprimée.',
+        })
+      }
+
       task.deletedAt = DateTime.now()
       task.version += 1
       await task.save()

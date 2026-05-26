@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getFamily } from '@/services/family'
-import { getVisibleTaskById } from '@/services/tasks'
+import { deleteTask, getVisibleTaskById } from '@/services/tasks'
 import { decideProof, getProofsForTask } from '@/services/proofs'
 
 const route = useRoute()
@@ -108,6 +108,35 @@ onMounted(() => {
 const isTaskEditable = computed(() => {
   return task.value && ['todo', 'refused'].includes(task.value.status)
 })
+
+const isTaskDeletable = computed(() => {
+  return task.value && ['todo', 'refused'].includes(task.value.status)
+})
+
+const deleteCurrentTask = async () => {
+  if (!task.value) {
+    return
+  }
+
+  const confirmed = window.confirm('Voulez-vous vraiment supprimer cette tâche ?')
+
+  if (!confirmed) {
+    return
+  }
+
+  decisionLoading.value = true
+  error.value = null
+
+  try {
+    await deleteTask(task.value.taskId)
+
+    router.push({ name: 'parent-dashboard' })
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || 'Impossible de supprimer la tâche.'
+  } finally {
+    decisionLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -140,7 +169,15 @@ const isTaskEditable = computed(() => {
           >
             Modifier
           </RouterLink>
-
+          <button
+            v-if="isTaskDeletable"
+            class="danger-button"
+            type="button"
+            :disabled="decisionLoading"
+            @click="deleteCurrentTask"
+          >
+            Supprimer
+          </button>
           <span :class="['status-badge', `status-badge--${task.status}`]">
             {{ statusLabels[task.status] || task.status }}
           </span>
