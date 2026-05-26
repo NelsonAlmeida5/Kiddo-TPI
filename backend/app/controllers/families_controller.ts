@@ -24,25 +24,35 @@ export default class FamiliesController {
   async show({ auth, response }: HttpContext) {
     const user = auth.getUserOrFail()
 
+    const currentFamily = await Family.find(user.currentFamilyFk)
+
+    if (!currentFamily || currentFamily.status !== 'active') {
+      return response.conflict({
+        message: 'Famille courante introuvable ou inactive.',
+      })
+    }
+
     const members = await User.query()
       .where('current_family_fk', user.currentFamilyFk)
       .orderBy('role', 'desc')
       .orderBy('name', 'asc')
 
     return response.ok({
-      familyId: user.currentFamilyFk,
+      familyId: currentFamily.familyId,
+      familyName: currentFamily.name,
+      ownerUserId: currentFamily.ownerUserId,
+      family: {
+        familyId: currentFamily.familyId,
+        name: currentFamily.name,
+        ownerUserId: currentFamily.ownerUserId,
+        status: currentFamily.status,
+      },
       members: members.map((member) => this.serializeMember(member)),
     })
   }
 
   /**
    * Crée un compte enfant depuis l'espace parent.
-   *
-   * L'enfant est directement rattaché à la famille courante du parent.
-   * En parallèle, une famille personnelle archivée est créée pour l'enfant.
-   *
-   * Cette famille personnelle permettra de le rattacher automatiquement
-   * quelque part s'il est retiré plus tard d'une famille.
    */
   async createChild({ auth, request, response }: HttpContext) {
     const parent = auth.getUserOrFail()
@@ -50,6 +60,14 @@ export default class FamiliesController {
     if (parent.role !== 'parent') {
       return response.forbidden({
         message: 'Seul un parent peut créer un compte enfant.',
+      })
+    }
+
+    const currentFamily = await Family.find(parent.currentFamilyFk)
+
+    if (!currentFamily || currentFamily.status !== 'active') {
+      return response.conflict({
+        message: 'Famille courante introuvable ou inactive.',
       })
     }
 
@@ -100,6 +118,7 @@ export default class FamiliesController {
    *
    * Règles :
    * - seul un parent peut retirer un membre ;
+   * - seul le propriétaire de la famille peut retirer des membres ;
    * - le membre doit appartenir à la même famille ;
    * - un utilisateur ne peut pas se retirer lui-même avec cette route ;
    * - le propriétaire de la famille ne peut pas être retiré ;
@@ -123,17 +142,23 @@ export default class FamiliesController {
       })
     }
 
-    if (memberId === parent.userId) {
-      return response.conflict({
-        message: 'Vous ne pouvez pas vous retirer vous-même avec cette action.',
-      })
-    }
-
     const currentFamily = await Family.find(parent.currentFamilyFk)
 
     if (!currentFamily || currentFamily.status !== 'active') {
       return response.conflict({
         message: 'Famille courante introuvable ou inactive.',
+      })
+    }
+
+    if (currentFamily.ownerUserId !== parent.userId) {
+      return response.forbidden({
+        message: 'Seul le propriétaire de la famille peut retirer un membre.',
+      })
+    }
+
+    if (memberId === parent.userId) {
+      return response.conflict({
+        message: 'Vous ne pouvez pas vous retirer vous-même avec cette action.',
       })
     }
 
@@ -217,14 +242,6 @@ export default class FamiliesController {
 
   /**
    * Permet à un parent de quitter une famille rejointe.
-   *
-   * Règles :
-   * - seul un parent peut quitter une famille ;
-   * - un parent ne peut pas quitter sa propre famille personnelle ;
-   * - le parent est rattaché à sa famille personnelle ;
-   * - sa famille personnelle est réactivée ;
-   * - ses accès aux tâches de l'ancienne famille sont supprimés ;
-   * - il ne se retrouve jamais sans famille courante.
    */
   async leave({ auth, response }: HttpContext) {
     const parent = auth.getUserOrFail()
