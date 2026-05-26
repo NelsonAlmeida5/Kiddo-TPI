@@ -11,6 +11,8 @@ import NotFoundView from '@/views/NotFoundView.vue'
 import ParentTaskCreateView from '@/views/ParentTaskCreateView.vue'
 import ParentTaskDetailView from '@/views/ParentTaskDetailView.vue'
 import ParentTaskEditView from '@/views/ParentTaskEditView.vue'
+import ChildTaskCreateView from '@/views/ChildTaskCreateView.vue'
+import ChildTaskEditView from '@/views/ChildTaskEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -61,6 +63,18 @@ const router = createRouter({
       path: '/child/tasks',
       name: 'child-tasks',
       component: ChildTasksView,
+      meta: { requiresAuth: true, role: 'child' },
+    },
+    {
+      path: '/child/tasks/new',
+      name: 'child-task-create',
+      component: ChildTaskCreateView,
+      meta: { requiresAuth: true, role: 'child' },
+    },
+    {
+      path: '/child/tasks/:id/edit',
+      name: 'child-task-edit',
+      component: ChildTaskEditView,
       meta: { requiresAuth: true, role: 'child' },
     },
     {

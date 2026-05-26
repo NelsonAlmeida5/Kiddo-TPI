@@ -1,12 +1,17 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { getTasks } from '@/services/tasks'
+import { RouterLink } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { deleteTask, getTasks } from '@/services/tasks'
 import { getProofsForTask, submitProof } from '@/services/proofs'
+
+const authStore = useAuthStore()
 
 const tasks = ref([])
 const proofsByTaskId = ref({})
 const loading = ref(false)
 const submittingTaskId = ref(null)
+const deletingTaskId = ref(null)
 const error = ref(null)
 const successMessage = ref(null)
 
@@ -23,6 +28,16 @@ const pendingTasks = computed(() => {
 const completedTasks = computed(() => {
   return tasks.value.filter((task) => task.status === 'validated')
 })
+
+const isOwnTask = (task) => {
+  return (
+    task.createdByFk === authStore.user?.userId && task.assignedChildFk === authStore.user?.userId
+  )
+}
+
+const canManageTask = (task) => {
+  return isOwnTask(task) && ['todo', 'refused'].includes(task.status)
+}
 
 const latestProofForTask = (taskId) => {
   return proofsByTaskId.value[taskId]?.[0] || null
@@ -93,18 +108,45 @@ const submitTaskProof = async (task) => {
   successMessage.value = null
 
   try {
-    await submitProof(task.taskId, {
+    const proof = await submitProof(task.taskId, {
       textContent,
     })
 
     proofTexts[task.taskId] = ''
-    successMessage.value = 'Preuve envoyée avec succès. La tâche est en attente de validation.'
+
+    successMessage.value =
+      proof.status === 'validated'
+        ? 'Tâche personnelle validée automatiquement.'
+        : 'Preuve envoyée avec succès. La tâche est en attente de validation.'
 
     await loadTasks()
   } catch (requestError) {
     error.value = requestError.response?.data?.message || 'Impossible d’envoyer la preuve.'
   } finally {
     submittingTaskId.value = null
+  }
+}
+
+const deletePersonalTask = async (task) => {
+  const confirmed = window.confirm(`Voulez-vous vraiment supprimer "${task.title}" ?`)
+
+  if (!confirmed) {
+    return
+  }
+
+  deletingTaskId.value = task.taskId
+  error.value = null
+  successMessage.value = null
+
+  try {
+    await deleteTask(task.taskId)
+
+    successMessage.value = 'Tâche supprimée avec succès.'
+    await loadTasks()
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || 'Impossible de supprimer la tâche.'
+  } finally {
+    deletingTaskId.value = null
   }
 }
 
@@ -120,6 +162,10 @@ onMounted(() => {
         <h1 class="page-title">Mes tâches</h1>
         <p class="page-subtitle">Consulte tes tâches et envoie une preuve quand c’est terminé.</p>
       </div>
+
+      <RouterLink class="primary-button" :to="{ name: 'child-task-create' }">
+        Ajouter une tâche personnelle
+      </RouterLink>
     </div>
 
     <div v-if="error" class="error-message">
@@ -148,6 +194,7 @@ onMounted(() => {
                   <div>
                     <h3>{{ task.title }}</h3>
                     <p class="task-meta">Échéance : {{ formatDate(task.dueDate) }}</p>
+                    <p v-if="isOwnTask(task)" class="task-meta">Tâche personnelle</p>
                   </div>
 
                   <span :class="['child-status-pill', `child-status-pill--${task.status}`]">
@@ -158,6 +205,24 @@ onMounted(() => {
                 <p v-if="task.description" class="task-description">
                   {{ task.description }}
                 </p>
+
+                <div v-if="canManageTask(task)" class="child-task-management-actions">
+                  <RouterLink
+                    class="secondary-button"
+                    :to="{ name: 'child-task-edit', params: { id: task.taskId } }"
+                  >
+                    Modifier
+                  </RouterLink>
+
+                  <button
+                    class="danger-button"
+                    type="button"
+                    :disabled="deletingTaskId === task.taskId"
+                    @click="deletePersonalTask(task)"
+                  >
+                    {{ deletingTaskId === task.taskId ? 'Suppression...' : 'Supprimer' }}
+                  </button>
+                </div>
 
                 <div v-if="task.status === 'refused'" class="refused-box">
                   <strong>Preuve refusée</strong>
@@ -201,6 +266,7 @@ onMounted(() => {
                   <div>
                     <h3>{{ task.title }}</h3>
                     <p class="task-meta">Échéance : {{ formatDate(task.dueDate) }}</p>
+                    <p v-if="isOwnTask(task)" class="task-meta">Tâche personnelle</p>
                   </div>
                 </div>
 
@@ -234,6 +300,7 @@ onMounted(() => {
                   <div>
                     <h3>{{ task.title }}</h3>
                     <p class="task-meta">Échéance : {{ formatDate(task.dueDate) }}</p>
+                    <p v-if="isOwnTask(task)" class="task-meta">Tâche personnelle</p>
                   </div>
                 </div>
 

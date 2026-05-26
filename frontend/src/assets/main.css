@@ -1127,6 +1127,54 @@ button {
 }
 
 /* =========================
+   Tâches personnelles enfant
+========================= */
+
+.visibility-parent-list {
+  display: grid;
+  gap: 12px;
+}
+
+.visibility-parent-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--color-blue-soft);
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.visibility-parent-card span {
+  display: grid;
+  gap: 4px;
+}
+
+.visibility-parent-card strong {
+  font-family: 'Fredoka', system-ui, sans-serif;
+  color: var(--color-text);
+}
+
+.visibility-parent-card small {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.visibility-parent-card input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-header-dark);
+}
+
+.child-task-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* =========================
    Responsive
 ========================= */
 @media (max-width: 620px) {

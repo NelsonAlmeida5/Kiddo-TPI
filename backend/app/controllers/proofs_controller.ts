@@ -60,6 +60,16 @@ export default class ProofsController {
     return Boolean(access)
   }
 
+  private async hasVisibleParent(taskId: number) {
+    const access = await db
+      .from('t_task_access')
+      .where('task_fk', taskId)
+      .whereIn('access_level', ['read', 'write'])
+      .first()
+
+    return Boolean(access)
+  }
+
   /**
    * Liste les preuves liées à une tâche.
    *
@@ -120,7 +130,8 @@ export default class ProofsController {
    * - seul l'enfant assigné peut soumettre une preuve ;
    * - la preuve doit contenir du texte, une photo, ou les deux ;
    * - la tâche doit être en statut todo ou refused ;
-   * - la tâche passe ensuite en statut submitted.
+   * - une tâche visible par au moins un parent passe en attente de validation ;
+   * - une tâche personnelle sans parent visible est validée automatiquement.
    */
   async submit({ auth, request, response }: HttpContext) {
     const child = auth.getUserOrFail()
@@ -170,24 +181,32 @@ export default class ProofsController {
       })
     }
 
+    const isPersonalChildTask =
+      task.createdByFk === child.userId && task.assignedChildFk === child.userId
+
+    const hasVisibleParent = await this.hasVisibleParent(task.taskId)
+    const shouldAutoValidate = isPersonalChildTask && !hasVisibleParent
+
     const proof = await db.transaction(async (trx) => {
       const createdProof = new Proof()
 
       createdProof.proofType = this.getProofType(textContent, photoPath)
       createdProof.textContent = textContent
       createdProof.photoPath = photoPath
-      createdProof.status = 'pending'
+      createdProof.status = shouldAutoValidate ? 'validated' : 'pending'
       createdProof.taskVersionAtSubmit = task.version
-      createdProof.decisionComment = null
-      createdProof.decidedAt = null
-      createdProof.decidedByFk = null
+      createdProof.decisionComment = shouldAutoValidate
+        ? 'Validation automatique : tâche personnelle sans parent visible.'
+        : null
+      createdProof.decidedAt = shouldAutoValidate ? DateTime.now() : null
+      createdProof.decidedByFk = shouldAutoValidate ? child.userId : null
       createdProof.submittedByFk = child.userId
       createdProof.taskFk = task.taskId
 
       createdProof.useTransaction(trx)
       await createdProof.save()
 
-      task.status = 'submitted'
+      task.status = shouldAutoValidate ? 'validated' : 'submitted'
       task.useTransaction(trx)
       await task.save()
 
@@ -195,7 +214,9 @@ export default class ProofsController {
     })
 
     return response.created({
-      message: 'Preuve soumise avec succès.',
+      message: shouldAutoValidate
+        ? 'Tâche personnelle validée automatiquement.'
+        : 'Preuve soumise avec succès.',
       proof: this.serializeProof(proof),
     })
   }
