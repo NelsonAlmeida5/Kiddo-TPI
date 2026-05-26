@@ -14,7 +14,7 @@
   --color-yellow-soft: #ffef96;
   --color-yellow-border: #f1d884;
 
-  --color-green: #000000c7;
+  --color-black: #000000c7;
   --color-orange: #f6a23a;
 
   --color-text: #2f3437;
@@ -88,7 +88,7 @@ button {
   font-family: 'Fredoka', system-ui, sans-serif;
   font-size: 1.55rem;
   font-weight: 700;
-  color: var(--color-green);
+  color: var(--color-black);
 }
 
 .brand-mark {
@@ -165,7 +165,7 @@ button {
   font-size: clamp(2rem, 5vw, 3.2rem);
   font-weight: 700;
   line-height: 1.05;
-  color: var(--color-green);
+  color: var(--color-black);
 }
 
 .page-subtitle {
@@ -385,7 +385,7 @@ button {
   margin: 0 0 16px;
   font-family: 'Fredoka', system-ui, sans-serif;
   font-size: 1.45rem;
-  color: var(--color-green);
+  color: var(--color-black);
 }
 
 .task-list {
@@ -637,7 +637,7 @@ button {
 .task-detail-section h2 {
   margin: 0 0 14px;
   font-family: 'Fredoka', system-ui, sans-serif;
-  color: var(--color-green);
+  color: var(--color-black);
 }
 
 .detail-list {
@@ -888,8 +888,188 @@ button {
 }
 
 /* =========================
+   Page Famille
+========================= */
+
+.family-page {
+  display: grid;
+  gap: 24px;
+}
+
+.family-header {
+  max-width: 980px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.family-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.family-side {
+  display: grid;
+  gap: 22px;
+}
+
+.family-card {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+.family-card h2 {
+  margin: 0 0 12px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.55rem;
+  color: var(--color-text);
+}
+
+.family-card h3 {
+  margin: 0 0 12px;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.family-card p {
+  margin: 0;
+}
+
+.family-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.family-card-header p {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.family-member-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.family-member-list {
+  display: grid;
+  gap: 12px;
+}
+
+.family-member-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  background: var(--color-blue-soft);
+  border: 2px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+}
+
+.family-member-info {
+  display: grid;
+  gap: 4px;
+}
+
+.family-member-info strong {
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+.family-member-info span {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.family-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.member-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid var(--color-blue-border);
+  color: #245466;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.danger-button--small {
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.family-form {
+  display: grid;
+  gap: 14px;
+}
+
+.family-form--inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.sent-invitations {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.invitation-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: var(--color-yellow-soft);
+  border: 2px solid var(--color-yellow-border);
+  border-radius: var(--radius-md);
+}
+
+.invitation-card p {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.family-card .empty-state {
+  background: var(--color-yellow-soft);
+  border-color: var(--color-yellow-border);
+}
+
+/* =========================
    Responsive
 ========================= */
+@media (max-width: 620px) {
+  .family-card-header,
+  .family-member-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .family-member-actions {
+    justify-content: flex-start;
+  }
+}
 
 @media (max-width: 720px) {
   .app-header {
@@ -983,6 +1163,16 @@ button {
 
 @media (max-width: 900px) {
   .child-tasks-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 950px) {
+  .family-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .family-form--inline {
     grid-template-columns: 1fr;
   }
 }

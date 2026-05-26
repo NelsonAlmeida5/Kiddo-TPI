@@ -33,27 +33,26 @@ const invitationForm = reactive({
 
 const currentUserId = computed(() => authStore.user?.userId)
 const isParent = computed(() => authStore.isParent)
-const isChild = computed(() => authStore.isChild)
 
 const parents = computed(() => {
   return members.value.filter((member) => member.role === 'parent')
-})
-
-const isFamilyOwner = computed(() => {
-  return isParent.value && familyOwnerUserId.value === currentUserId.value
 })
 
 const children = computed(() => {
   return members.value.filter((member) => member.role === 'child')
 })
 
+const isFamilyOwner = computed(() => {
+  return isParent.value && familyOwnerUserId.value === currentUserId.value
+})
+
+const canLeaveFamily = computed(() => {
+  return isParent.value && !isFamilyOwner.value
+})
+
 const familyTitle = computed(() => {
   if (familyName.value) {
     return familyName.value
-  }
-
-  if (parents.value.length > 0) {
-    return `Famille ${parents.value[0].name}`
   }
 
   return 'Famille actuelle'
@@ -259,22 +258,10 @@ onMounted(() => {
 
 <template>
   <section class="family-page">
-    <div class="family-header">
-      <div>
-        <h1 class="page-title">Famille</h1>
-        <p class="page-subtitle">Gestion des membres et invitations Kiddo.</p>
-      </div>
-
-      <button
-        v-if="isParent && !isFamilyOwner"
-        class="secondary-button"
-        type="button"
-        :disabled="actionLoading"
-        @click="leaveCurrentFamily"
-      >
-        Quitter la famille
-      </button>
-    </div>
+    <header class="family-header">
+      <h1 class="page-title">Famille</h1>
+      <p class="page-subtitle">Gestion des membres et invitations Kiddo.</p>
+    </header>
 
     <div v-if="error" class="error-message">
       {{ error }}
@@ -286,205 +273,223 @@ onMounted(() => {
 
     <p v-if="loading" class="loading-text">Chargement de la famille...</p>
 
-    <div v-else class="family-grid">
-      <section class="page-card family-card">
-        <h2>{{ familyTitle }}</h2>
-
-        <p class="family-count">{{ members.length }} membre{{ members.length > 1 ? 's' : '' }}</p>
-
-        <div class="family-columns">
+    <div v-else class="family-layout">
+      <section class="page-card family-card family-card--members">
+        <div class="family-card-header">
           <div>
-            <h3>Parents</h3>
+            <h2>{{ familyTitle }}</h2>
+            <p>{{ members.length }} membre{{ members.length > 1 ? 's' : '' }}</p>
+          </div>
 
-            <div v-if="parents.length === 0" class="empty-state">Aucun parent.</div>
+          <button
+            v-if="canLeaveFamily"
+            class="secondary-button"
+            type="button"
+            :disabled="actionLoading"
+            @click="leaveCurrentFamily"
+          >
+            Quitter la famille
+          </button>
+        </div>
 
-            <article v-for="parent in parents" :key="parent.userId" class="member-row">
-              <div>
+        <div class="family-member-section">
+          <h3>Parents</h3>
+
+          <div v-if="parents.length === 0" class="empty-state">Aucun parent.</div>
+
+          <div v-else class="family-member-list">
+            <article v-for="parent in parents" :key="parent.userId" class="family-member-card">
+              <div class="family-member-info">
                 <strong>{{ parent.name }}</strong>
-                <p>{{ parent.username }}</p>
+                <span>{{ parent.username }}</span>
               </div>
 
-              <span v-if="parent.userId === currentUserId" class="member-badge">Vous</span>
+              <div class="family-member-actions">
+                <span v-if="parent.userId === currentUserId" class="member-badge">Vous</span>
 
-              <button
-                v-if="isFamilyOwner && parent.userId !== currentUserId"
-                class="danger-button"
-                type="button"
-                :disabled="actionLoading"
-                @click="removeMember(parent)"
-              >
-                Retirer
-              </button>
+                <span v-else-if="parent.userId === familyOwnerUserId" class="member-badge">
+                  Propriétaire
+                </span>
+
+                <button
+                  v-if="isFamilyOwner && parent.userId !== currentUserId"
+                  class="danger-button danger-button--small"
+                  type="button"
+                  :disabled="actionLoading"
+                  @click="removeMember(parent)"
+                >
+                  Retirer
+                </button>
+              </div>
             </article>
           </div>
+        </div>
 
-          <div>
-            <h3>Enfants</h3>
+        <div class="family-member-section">
+          <h3>Enfants</h3>
 
-            <div v-if="children.length === 0" class="empty-state">Aucun enfant.</div>
+          <div v-if="children.length === 0" class="empty-state">Aucun enfant.</div>
 
-            <article v-for="child in children" :key="child.userId" class="member-row">
-              <div>
+          <div v-else class="family-member-list">
+            <article v-for="child in children" :key="child.userId" class="family-member-card">
+              <div class="family-member-info">
                 <strong>{{ child.name }}</strong>
-                <p>{{ child.username }}</p>
+                <span>{{ child.username }}</span>
               </div>
 
-              <span v-if="child.userId === currentUserId" class="member-badge">Vous</span>
+              <div class="family-member-actions">
+                <span v-if="child.userId === currentUserId" class="member-badge">Vous</span>
 
-              <button
-                v-if="isFamilyOwner"
-                class="danger-button"
-                type="button"
-                :disabled="actionLoading"
-                @click="removeMember(child)"
-              >
-                Retirer
-              </button>
+                <button
+                  v-if="isFamilyOwner"
+                  class="danger-button danger-button--small"
+                  type="button"
+                  :disabled="actionLoading"
+                  @click="removeMember(child)"
+                >
+                  Retirer
+                </button>
+              </div>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="page-card family-card">
-        <h2>Invitations reçues</h2>
+      <aside class="family-side">
+        <section class="page-card family-card">
+          <h2>Invitations reçues</h2>
 
-        <div v-if="pendingReceivedInvitations.length === 0" class="empty-state">
-          Aucune invitation reçue.
-        </div>
-
-        <article
-          v-for="invitation in pendingReceivedInvitations"
-          :key="invitation.invitationId"
-          class="invitation-card"
-        >
-          <p>{{ getReceivedInvitationText(invitation) }}</p>
-
-          <div class="inline-actions">
-            <button
-              class="primary-button"
-              type="button"
-              :disabled="actionLoading"
-              @click="answerInvitation(invitation.invitationId, 'accepted')"
-            >
-              Accepter
-            </button>
-
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="actionLoading"
-              @click="answerInvitation(invitation.invitationId, 'refused')"
-            >
-              Refuser
-            </button>
-          </div>
-        </article>
-      </section>
-
-      <section v-if="isParent" class="page-card family-card">
-        <h2>Créer un compte enfant</h2>
-        <p class="help-text">Le compte enfant créé est automatiquement ajouté à votre famille.</p>
-
-        <form class="family-form" @submit.prevent="submitChild">
-          <div class="form-field">
-            <label for="childUsername">Nom d’utilisateur</label>
-            <input
-              id="childUsername"
-              v-model="childForm.username"
-              type="text"
-              required
-              minlength="3"
-              maxlength="50"
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="childName">Nom de l’enfant</label>
-            <input
-              id="childName"
-              v-model="childForm.name"
-              type="text"
-              required
-              minlength="2"
-              maxlength="200"
-            />
-          </div>
-
-          <div class="form-field">
-            <label for="childPassword">Mot de passe</label>
-            <input
-              id="childPassword"
-              v-model="childForm.password"
-              type="password"
-              required
-              minlength="8"
-              maxlength="100"
-            />
-          </div>
-
-          <button class="primary-button" type="submit" :disabled="actionLoading">
-            Créer le compte enfant
-          </button>
-        </form>
-      </section>
-
-      <section v-if="isParent" class="page-card family-card">
-        <h2>Inviter un nouveau membre</h2>
-        <p class="help-text">
-          L’invitation est visible dans l’espace Kiddo de l’utilisateur invité.
-        </p>
-
-        <form class="family-form" @submit.prevent="submitInvitation">
-          <div class="form-field">
-            <label for="invitedUsername">Nom d’utilisateur Kiddo</label>
-            <input
-              id="invitedUsername"
-              v-model="invitationForm.invitedUsername"
-              type="text"
-              required
-              minlength="3"
-              maxlength="50"
-              placeholder="ex. john.doe"
-            />
-          </div>
-
-          <button class="primary-button" type="submit" :disabled="actionLoading">
-            Envoyer l’invitation
-          </button>
-        </form>
-
-        <div class="sent-invitations">
-          <h3>Invitations en attente</h3>
-
-          <div v-if="pendingSentInvitations.length === 0" class="empty-state">
-            Aucune invitation envoyée en attente.
+          <div v-if="pendingReceivedInvitations.length === 0" class="empty-state">
+            Aucune invitation reçue.
           </div>
 
           <article
-            v-for="invitation in pendingSentInvitations"
+            v-for="invitation in pendingReceivedInvitations"
             :key="invitation.invitationId"
             class="invitation-card"
           >
-            <p>{{ getSentInvitationText(invitation) }}</p>
+            <p>{{ getReceivedInvitationText(invitation) }}</p>
 
-            <button
-              class="secondary-button"
-              type="button"
-              :disabled="actionLoading"
-              @click="cancelPendingInvitation(invitation.invitationId)"
-            >
-              Annuler
-            </button>
+            <div class="inline-actions">
+              <button
+                class="primary-button"
+                type="button"
+                :disabled="actionLoading"
+                @click="answerInvitation(invitation.invitationId, 'accepted')"
+              >
+                Accepter
+              </button>
+
+              <button
+                class="danger-button"
+                type="button"
+                :disabled="actionLoading"
+                @click="answerInvitation(invitation.invitationId, 'refused')"
+              >
+                Refuser
+              </button>
+            </div>
           </article>
-        </div>
-      </section>
+        </section>
 
-      <section v-if="isChild" class="page-card family-card">
-        <h2>Espace enfant</h2>
-        <p class="help-text">
-          Tu peux voir les membres de ta famille et répondre aux invitations reçues.
-        </p>
-      </section>
+        <section v-if="isParent" class="page-card family-card">
+          <h2>Inviter un nouveau membre</h2>
+          <p class="help-text">
+            L’invitation est visible dans l’espace Kiddo de l’utilisateur invité.
+          </p>
+
+          <form class="family-form family-form--inline" @submit.prevent="submitInvitation">
+            <div class="form-field">
+              <label for="invitedUsername">Nom d’utilisateur Kiddo</label>
+              <input
+                id="invitedUsername"
+                v-model="invitationForm.invitedUsername"
+                type="text"
+                required
+                minlength="3"
+                maxlength="50"
+                placeholder="ex. john.doe"
+              />
+            </div>
+
+            <button class="primary-button" type="submit" :disabled="actionLoading">
+              Envoyer l’invitation
+            </button>
+          </form>
+
+          <div class="sent-invitations">
+            <h3>Invitations en attente</h3>
+
+            <div v-if="pendingSentInvitations.length === 0" class="empty-state">
+              Aucune invitation envoyée en attente.
+            </div>
+
+            <article
+              v-for="invitation in pendingSentInvitations"
+              :key="invitation.invitationId"
+              class="invitation-card"
+            >
+              <p>{{ getSentInvitationText(invitation) }}</p>
+
+              <button
+                class="secondary-button"
+                type="button"
+                :disabled="actionLoading"
+                @click="cancelPendingInvitation(invitation.invitationId)"
+              >
+                Annuler
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <section v-if="isParent" class="page-card family-card">
+          <h2>Créer un compte enfant</h2>
+          <p class="help-text">Le compte enfant créé est automatiquement ajouté à votre famille.</p>
+
+          <form class="family-form" @submit.prevent="submitChild">
+            <div class="form-field">
+              <label for="childUsername">Nom d’utilisateur</label>
+              <input
+                id="childUsername"
+                v-model="childForm.username"
+                type="text"
+                required
+                minlength="3"
+                maxlength="50"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="childName">Nom de l’enfant</label>
+              <input
+                id="childName"
+                v-model="childForm.name"
+                type="text"
+                required
+                minlength="2"
+                maxlength="200"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="childPassword">Mot de passe</label>
+              <input
+                id="childPassword"
+                v-model="childForm.password"
+                type="password"
+                required
+                minlength="8"
+                maxlength="100"
+              />
+            </div>
+
+            <button class="primary-button" type="submit" :disabled="actionLoading">
+              Créer le compte enfant
+            </button>
+          </form>
+        </section>
+      </aside>
     </div>
   </section>
 </template>
