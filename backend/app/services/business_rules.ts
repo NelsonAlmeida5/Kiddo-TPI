@@ -38,18 +38,22 @@ export const isValidTaskStatus = (status: string) => {
 }
 
 // Empêche les changements de statut incohérents.
-// Une tâche validée ne peut plus changer de statut.
-// Une tâche soumise peut uniquement être validée ou refusée.
+// Vérifie les transitions de statut principales.
+// Une tâche refusée doit repasser par une nouvelle soumission avant une nouvelle décision parentale.
 export const canChangeTaskStatus = (currentStatus: TaskStatus, nextStatus: TaskStatus) => {
-  if (currentStatus === 'validated') {
-    return false
+  if (currentStatus === 'todo') {
+    return nextStatus === 'submitted'
+  }
+
+  if (currentStatus === 'refused') {
+    return nextStatus === 'submitted'
   }
 
   if (currentStatus === 'submitted') {
     return ['validated', 'refused'].includes(nextStatus)
   }
 
-  return true
+  return false
 }
 
 // Vérifie qu'un co-parent possède bien le droit de modification.

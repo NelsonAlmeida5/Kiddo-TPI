@@ -50,12 +50,15 @@ test.group('Règles métier - tests unitaires', () => {
   })
 
   test('TU-05 - une transition de statut interdite est refusée', ({ assert }) => {
+    assert.isTrue(canChangeTaskStatus('todo', 'submitted'))
+    assert.isTrue(canChangeTaskStatus('refused', 'submitted'))
+    assert.isTrue(canChangeTaskStatus('submitted', 'validated'))
+    assert.isTrue(canChangeTaskStatus('submitted', 'refused'))
+
     assert.isFalse(canChangeTaskStatus('validated', 'todo'))
     assert.isFalse(canChangeTaskStatus('validated', 'refused'))
     assert.isFalse(canChangeTaskStatus('submitted', 'todo'))
-
-    assert.isTrue(canChangeTaskStatus('submitted', 'validated'))
-    assert.isTrue(canChangeTaskStatus('submitted', 'refused'))
+    assert.isFalse(canChangeTaskStatus('refused', 'validated'))
   })
 
   test('TU-06 - un parent sans droit de modification est refusé', ({ assert }) => {
