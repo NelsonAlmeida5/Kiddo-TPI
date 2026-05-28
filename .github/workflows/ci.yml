@@ -14,9 +14,38 @@ jobs:
     name: Backend checks
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: db_kiddo
+          MYSQL_USER: kiddo_user
+          MYSQL_PASSWORD: kiddo_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     defaults:
       run:
         working-directory: backend
+
+    env:
+      TZ: UTC
+      NODE_ENV: test
+      HOST: 0.0.0.0
+      PORT: 3333
+      LOG_LEVEL: info
+      APP_KEY: ${{ secrets.CI_APP_KEY }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: kiddo_user
+      DB_PASSWORD: kiddo_password
+      DB_DATABASE: db_kiddo
 
     steps:
       - name: Checkout repository
@@ -29,8 +58,20 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+        working-directory: .
+
       - name: Install backend dependencies
         run: npm ci
+
+      - name: Prepare test database
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot < ../database/setup_database.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -proot < ../database/init_database.sql
+
+      - name: Run backend tests
+        run: npm test
 
       - name: Lint backend
         run: npm run lint
